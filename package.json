@@ -68,6 +68,8 @@
     "ota:development": "yarn run pre-ota && APP_ENV=development eas update --clear-cache --branch development",
     "ota:preview": "yarn run pre-ota && APP_ENV=preview eas update --clear-cache --branch preview",
     "ota:production": "yarn run pre-ota && APP_ENV=production eas update --clear-cache --branch production",
+    "submit:ios:development": "APP_ENV=development eas submit --profile development --platform ios --no-wait",
+    "submit:android:development": "APP_ENV=development eas submit --profile development --platform android --no-wait",
     "submit:ios:preview": "APP_ENV=preview eas submit --profile preview --platform ios --no-wait",
     "submit:android:preview": "APP_ENV=preview eas submit --profile preview --platform android --no-wait",
     "submit:ios:production": "APP_ENV=production eas submit --profile production --platform ios --no-wait",

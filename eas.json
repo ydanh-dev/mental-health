@@ -36,7 +36,7 @@
       "environment": "development",
       "channel": "development",
       "developmentClient": true,
-      "distribution": "internal",
+      "distribution": "store",
       "autoIncrement": true,
       "env": {
         "APP_ENV": "development"
@@ -70,6 +70,7 @@
     }
   },
   "submit": {
+    "development": {},
     "preview": {},
     "production": {}
   }
