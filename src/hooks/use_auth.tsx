@@ -30,6 +30,10 @@ type AuthProviderProps = {
   children: ReactNode;
 };
 
+function isUsableEnvValue(value?: string) {
+  return Boolean(value && value.trim() && !value.includes('your-') && !value.includes('replace-with'));
+}
+
 export function AuthProvider({ children }: AuthProviderProps) {
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -146,8 +150,15 @@ export function AuthProvider({ children }: AuthProviderProps) {
     setIsLoading(true);
 
     try {
-      if (!process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID) {
+      const googleWebClientId = process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID;
+      const googleIosClientId = process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID;
+
+      if (!isUsableEnvValue(googleWebClientId)) {
         throw new Error('Chưa cấu hình EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID.');
+      }
+
+      if (Platform.OS === 'ios' && !isUsableEnvValue(googleIosClientId)) {
+        throw new Error('Chưa cấu hình EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID. Tạo OAuth Client ID type iOS trong Google Cloud, điền vào .env rồi build lại dev client.');
       }
 
       const GoogleSignin = getGoogleSignin();
@@ -156,8 +167,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
       }
 
       GoogleSignin.configure({
-        iosClientId: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID,
-        webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
+        iosClientId: googleIosClientId,
+        webClientId: googleWebClientId,
       });
       await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
       const result = await GoogleSignin.signIn();
