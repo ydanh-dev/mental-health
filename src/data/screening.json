@@ -1,0 +1,225 @@
+{
+  "instruments": [
+    {
+      "id": "who5",
+      "name": "WHO-5 Wellbeing",
+      "description": "Đo mức độ cảm thấy ổn chung - nhẹ nhàng nhất, dùng trước",
+      "timeframe": "2 tuần gần đây",
+      "questions": [
+        {
+          "id": "who5_1",
+          "text": "Bạn có cảm thấy vui vẻ và tâm trạng tốt không?",
+          "scale": "frequency",
+          "weight": 1
+        },
+        {
+          "id": "who5_2",
+          "text": "Bạn có cảm thấy bình yên và thư giãn không?",
+          "scale": "frequency",
+          "weight": 1
+        },
+        {
+          "id": "who5_3",
+          "text": "Bạn có cảm thấy năng động và tràn đầy sức sống không?",
+          "scale": "frequency",
+          "weight": 1
+        },
+        {
+          "id": "who5_4",
+          "text": "Bạn có thức dậy với cảm giác tươi tỉnh và được nghỉ ngơi đủ không?",
+          "scale": "frequency",
+          "weight": 1
+        },
+        {
+          "id": "who5_5",
+          "text": "Cuộc sống hàng ngày của bạn có nhiều điều thú vị không?",
+          "scale": "frequency",
+          "weight": 1
+        }
+      ],
+      "scoring": {
+        "scale_values": {
+          "always": 5,
+          "most_of_time": 4,
+          "more_than_half": 3,
+          "less_than_half": 2,
+          "some_of_time": 1,
+          "never": 0
+        },
+        "max_raw": 25,
+        "percentage_multiply": 4,
+        "threshold_low": 50,
+        "interpretation": {
+          "below_50": "Cần chú ý thêm - có thể đang không ổn",
+          "50_to_72": "Ở mức trung bình - có thể cải thiện",
+          "above_72": "Đang ở trạng thái tốt"
+        }
+      }
+    },
+    {
+      "id": "phq9",
+      "name": "PHQ-9 Depression Screen",
+      "description": "Sàng lọc tín hiệu trầm cảm - chỉ dùng khi WHO-5 < 50",
+      "timeframe": "2 tuần gần đây",
+      "questions": [
+        {
+          "id": "phq9_1",
+          "text": "Bạn có ít hứng thú hoặc niềm vui trong những việc thường ngày không?",
+          "scale": "frequency_4",
+          "weight": 1
+        },
+        {
+          "id": "phq9_2",
+          "text": "Bạn có cảm thấy buồn chán, trống rỗng hoặc tuyệt vọng không?",
+          "scale": "frequency_4",
+          "weight": 1
+        },
+        {
+          "id": "phq9_3",
+          "text": "Bạn có gặp khó khăn khi ngủ, ngủ không ngon, hoặc ngủ quá nhiều không?",
+          "scale": "frequency_4",
+          "weight": 1
+        },
+        {
+          "id": "phq9_4",
+          "text": "Bạn có cảm thấy mệt mỏi hoặc thiếu năng lượng không?",
+          "scale": "frequency_4",
+          "weight": 1
+        },
+        {
+          "id": "phq9_5",
+          "text": "Bạn có ăn kém ngon hoặc ăn quá nhiều không?",
+          "scale": "frequency_4",
+          "weight": 1
+        },
+        {
+          "id": "phq9_6",
+          "text": "Bạn có cảm thấy tệ về bản thân - như mình thất bại hoặc đã làm gia đình thất vọng không?",
+          "scale": "frequency_4",
+          "weight": 1
+        },
+        {
+          "id": "phq9_7",
+          "text": "Bạn có khó tập trung vào những việc như đọc sách hoặc xem TV không?",
+          "scale": "frequency_4",
+          "weight": 1
+        },
+        {
+          "id": "phq9_8",
+          "text": "Bạn có di chuyển hoặc nói chuyện chậm hơn mức mọi người có thể nhận ra không? Hoặc ngược lại - bồn chồn, đứng ngồi không yên?",
+          "scale": "frequency_4",
+          "weight": 1
+        },
+        {
+          "id": "phq9_9",
+          "text": "Bạn có có suy nghĩ rằng tốt hơn là nên chết đi, hoặc tự làm hại bản thân không?",
+          "scale": "frequency_4",
+          "weight": 2,
+          "sensitive": true,
+          "crisis_trigger": true
+        }
+      ],
+      "scoring": {
+        "scale_values": {
+          "not_at_all": 0,
+          "several_days": 1,
+          "more_than_half": 2,
+          "nearly_every_day": 3
+        },
+        "max_raw": 27,
+        "thresholds": {
+          "minimal": { "range": [0, 4], "label": "Tối thiểu" },
+          "mild": { "range": [5, 9], "label": "Nhẹ" },
+          "moderate": { "range": [10, 14], "label": "Vừa" },
+          "moderately_severe": { "range": [15, 19], "label": "Vừa-nặng" },
+          "severe": { "range": [20, 27], "label": "Nặng" }
+        }
+      }
+    },
+    {
+      "id": "gad7",
+      "name": "GAD-7 Anxiety Screen",
+      "description": "Sàng lọc tín hiệu lo âu - dùng song song với PHQ-9",
+      "timeframe": "2 tuần gần đây",
+      "questions": [
+        {
+          "id": "gad7_1",
+          "text": "Bạn có cảm thấy lo lắng, bất an hoặc căng thẳng không?",
+          "scale": "frequency_4",
+          "weight": 1
+        },
+        {
+          "id": "gad7_2",
+          "text": "Bạn có không thể ngừng lo lắng hoặc kiểm soát sự lo lắng không?",
+          "scale": "frequency_4",
+          "weight": 1
+        },
+        {
+          "id": "gad7_3",
+          "text": "Bạn có lo lắng quá mức về nhiều thứ khác nhau không?",
+          "scale": "frequency_4",
+          "weight": 1
+        },
+        {
+          "id": "gad7_4",
+          "text": "Bạn có khó thư giãn không?",
+          "scale": "frequency_4",
+          "weight": 1
+        },
+        {
+          "id": "gad7_5",
+          "text": "Bạn có bồn chồn đến mức khó ngồi yên không?",
+          "scale": "frequency_4",
+          "weight": 1
+        },
+        {
+          "id": "gad7_6",
+          "text": "Bạn có dễ bực bội hoặc cáu gắt không?",
+          "scale": "frequency_4",
+          "weight": 1
+        },
+        {
+          "id": "gad7_7",
+          "text": "Bạn có sợ hãi như thể điều gì tệ sắp xảy ra không?",
+          "scale": "frequency_4",
+          "weight": 1
+        }
+      ],
+      "scoring": {
+        "scale_values": {
+          "not_at_all": 0,
+          "several_days": 1,
+          "more_than_half": 2,
+          "nearly_every_day": 3
+        },
+        "max_raw": 21,
+        "thresholds": {
+          "minimal": { "range": [0, 4], "label": "Tối thiểu" },
+          "mild": { "range": [5, 9], "label": "Nhẹ" },
+          "moderate": { "range": [10, 14], "label": "Vừa" },
+          "severe": { "range": [15, 21], "label": "Nặng" }
+        }
+      }
+    }
+  ],
+  "scales": {
+    "frequency": {
+      "options": [
+        { "value": "always", "label": "Luôn luôn" },
+        { "value": "most_of_time", "label": "Hầu hết thời gian" },
+        { "value": "more_than_half", "label": "Hơn nửa thời gian" },
+        { "value": "less_than_half", "label": "Dưới nửa thời gian" },
+        { "value": "some_of_time", "label": "Thỉnh thoảng" },
+        { "value": "never", "label": "Không bao giờ" }
+      ]
+    },
+    "frequency_4": {
+      "options": [
+        { "value": "not_at_all", "label": "Không hề" },
+        { "value": "several_days", "label": "Vài ngày" },
+        { "value": "more_than_half", "label": "Hơn nửa số ngày" },
+        { "value": "nearly_every_day", "label": "Gần như mỗi ngày" }
+      ]
+    }
+  }
+}

@@ -1,0 +1,11 @@
+declare const process: {
+  env: {
+    EXPO_PUBLIC_AI_REFLECTION_ENDPOINT?: string;
+    EXPO_PUBLIC_GROQ_API_KEY?: string;
+    EXPO_PUBLIC_GROQ_MODEL?: string;
+    EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID?: string;
+    EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID?: string;
+    EXPO_PUBLIC_SUPABASE_ANON_KEY?: string;
+    EXPO_PUBLIC_SUPABASE_URL?: string;
+  };
+};

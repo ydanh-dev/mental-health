@@ -1,0 +1,4 @@
+interface:
+  display_name: "Mental Health Companion"
+  short_description: "Guide gentle wellness flows, scoring, time context, and i18n."
+  default_prompt: "Use $mental-health-companion to design a gentle time-aware Groq mental-health check-in with deterministic scoring and safe i18n-ready copy."

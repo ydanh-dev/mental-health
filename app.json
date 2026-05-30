@@ -1,25 +1,43 @@
 {
   "expo": {
     "name": "mental-health",
+    "owner": "hope2luv",
     "slug": "mental-health",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
+    "icon": "./assets/icon_1024.png",
     "userInterfaceStyle": "light",
+    "plugins": [
+      "expo-dev-client",
+      "expo-apple-authentication",
+      "@react-native-google-signin/google-signin"
+    ],
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "usesAppleSignIn": true,
+      "bundleIdentifier": "com.hope2luv.mental-health"
     },
     "android": {
+      "package": "com.hope2luv.mentalhealth",
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
-        "foregroundImage": "./assets/android-icon-foreground.png",
-        "backgroundImage": "./assets/android-icon-background.png",
-        "monochromeImage": "./assets/android-icon-monochrome.png"
+        "foregroundImage": "./assets/icon_192.png"
       },
       "predictiveBackGestureEnabled": false
     },
     "web": {
-      "favicon": "./assets/favicon.png"
+      "favicon": "./assets/icon_192.png"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "e3f5447c-37a8-4230-a9c6-8e0b585c7c54"
+      }
+    },
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/e3f5447c-37a8-4230-a9c6-8e0b585c7c54"
     }
   }
 }
