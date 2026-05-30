@@ -1,5 +1,7 @@
 import type { Session, User } from '@supabase/supabase-js';
 import * as AppleAuthentication from 'expo-apple-authentication';
+import * as Linking from 'expo-linking';
+import * as WebBrowser from 'expo-web-browser';
 import {
   ReactNode,
   createContext,
@@ -9,9 +11,11 @@ import {
   useMemo,
   useState,
 } from 'react';
-import { NativeModules, Platform } from 'react-native';
+import { Platform } from 'react-native';
 
 import { getSupabaseClient, isSupabaseConfigured, supabase } from '../services/supabase';
+
+WebBrowser.maybeCompleteAuthSession();
 
 type AuthContextValue = {
   error: string | null;
@@ -29,10 +33,6 @@ const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 type AuthProviderProps = {
   children: ReactNode;
 };
-
-function isUsableEnvValue(value?: string) {
-  return Boolean(value && value.trim() && !value.includes('your-') && !value.includes('replace-with'));
-}
 
 export function AuthProvider({ children }: AuthProviderProps) {
   const [error, setError] = useState<string | null>(null);
@@ -126,65 +126,37 @@ export function AuthProvider({ children }: AuthProviderProps) {
     }
   }, []);
 
-  // Helper to safely load GoogleSignin without crashing in Expo Go
-  const getGoogleSignin = useCallback(() => {
-    // Check if the native module is registered in the native binary before importing
-    const isNativeAvailable = NativeModules.RNGoogleSignin != null;
-    
-    if (!isNativeAvailable) {
-      return null;
-    }
-
-    try {
-      // Use dynamic require wrapped in try-catch to capture native registration failures in Expo Go
-      const { GoogleSignin } = require('@react-native-google-signin/google-signin');
-      return GoogleSignin;
-    } catch (error) {
-      console.warn('Google Signin is not available in Expo Go:', error);
-      return null;
-    }
-  }, []);
-
   const signInWithGoogle = useCallback(async () => {
     setError(null);
     setIsLoading(true);
 
     try {
-      const googleWebClientId = process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID;
-      const googleIosClientId = process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID;
-
-      if (!isUsableEnvValue(googleWebClientId)) {
-        throw new Error('Chưa cấu hình EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID.');
-      }
-
-      if (Platform.OS === 'ios' && !isUsableEnvValue(googleIosClientId)) {
-        throw new Error('Chưa cấu hình EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID. Tạo OAuth Client ID type iOS trong Google Cloud, điền vào .env rồi build lại dev client.');
-      }
-
-      const GoogleSignin = getGoogleSignin();
-      if (!GoogleSignin) {
-        throw new Error('Đăng nhập Google không khả dụng trên phiên bản Expo Go này. Vui lòng sử dụng Custom Dev Client.');
-      }
-
-      GoogleSignin.configure({
-        iosClientId: googleIosClientId,
-        webClientId: googleWebClientId,
-      });
-      await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
-      const result = await GoogleSignin.signIn();
-      const idToken = result.data?.idToken;
-
-      if (!idToken) {
-        throw new Error('Google không trả về idToken.');
-      }
-
-      const { error: signInError } = await getSupabaseClient().auth.signInWithIdToken({
+      const redirectTo = Linking.createURL('auth/callback');
+      const client = getSupabaseClient();
+      const { data, error: oauthError } = await client.auth.signInWithOAuth({
         provider: 'google',
-        token: idToken,
+        options: {
+          redirectTo,
+          skipBrowserRedirect: true,
+        },
       });
 
-      if (signInError) {
-        throw signInError;
+      if (oauthError) {
+        throw oauthError;
+      }
+
+      if (!data.url) {
+        throw new Error('Supabase không trả về URL đăng nhập Google.');
+      }
+
+      const result = await WebBrowser.openAuthSessionAsync(data.url, redirectTo);
+
+      if (result.type === 'success') {
+        const { error: exchangeError } = await client.auth.exchangeCodeForSession(result.url);
+
+        if (exchangeError) {
+          throw exchangeError;
+        }
       }
     } catch (signInError) {
       const code =
@@ -192,23 +164,19 @@ export function AuthProvider({ children }: AuthProviderProps) {
           ? String(signInError.code)
           : '';
 
-      if (code !== 'SIGN_IN_CANCELLED') {
+      if (code !== 'SIGN_IN_CANCELLED' && code !== 'ERR_WEB_BROWSER_CRYPTO') {
         setError(signInError instanceof Error ? signInError.message : 'Không đăng nhập được bằng Google.');
       }
     } finally {
       setIsLoading(false);
     }
-  }, [getGoogleSignin]);
+  }, []);
 
   const signOut = useCallback(async () => {
     setError(null);
     setIsLoading(true);
 
     try {
-      const GoogleSignin = getGoogleSignin();
-      if (GoogleSignin) {
-        await GoogleSignin.signOut().catch(() => undefined);
-      }
       const { error: signOutError } = await getSupabaseClient().auth.signOut();
 
       if (signOutError) {
@@ -219,7 +187,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     } finally {
       setIsLoading(false);
     }
-  }, [getGoogleSignin]);
+  }, []);
 
   const value = useMemo<AuthContextValue>(
     () => ({

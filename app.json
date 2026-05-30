@@ -3,6 +3,7 @@
     "name": "mental-health",
     "owner": "hope2luv",
     "slug": "mental-health",
+    "scheme": "mentalhealth",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon_1024.png",
@@ -10,12 +11,13 @@
     "plugins": [
       "expo-dev-client",
       "expo-apple-authentication",
-      "@react-native-google-signin/google-signin"
+      "expo-web-browser"
     ],
     "ios": {
       "supportsTablet": true,
       "usesAppleSignIn": true,
-      "bundleIdentifier": "com.hope2luv.mental-health"
+      "bundleIdentifier": "com.hope2luv.mental-health",
+      "appleTeamId": "3SMD86HXBR"
     },
     "android": {
       "package": "com.hope2luv.mentalhealth",
