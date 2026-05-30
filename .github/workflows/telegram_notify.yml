@@ -22,11 +22,9 @@ jobs:
           format: markdown
           message: |
             *🚀 CODE ĐÃ ĐƯỢC MERGE THÀNH CÔNG!*
-            
+
             👤 *Người thực hiện:* `${{ github.actor }}`
             📁 *Repository:* `${{ github.repository }}`
             🌿 *Branch:* `${{ github.ref_name }}`
             📝 *Nội dung Commit:* 
             > ${{ github.event.head_commit.message }}
-            
-            🔗 [Xem chi tiết trên GitHub](<${{ github.event.head_commit.url }}>)

@@ -1,8 +1,8 @@
 {
   "expo": {
     "name": "Solen",
-    "owner": "hope2luv",
-    "slug": "mental-health",
+    "owner": "mental-health",
+    "slug": "solen",
     "scheme": "mentalhealth",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -32,7 +32,7 @@
     },
     "extra": {
       "eas": {
-        "projectId": "e3f5447c-37a8-4230-a9c6-8e0b585c7c54"
+        "projectId": "0d346908-2ecf-4ee9-96dc-606a4c0964b8"
       }
     },
     "runtimeVersion": {
