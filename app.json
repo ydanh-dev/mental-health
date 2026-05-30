@@ -17,7 +17,10 @@
       "supportsTablet": true,
       "usesAppleSignIn": true,
       "bundleIdentifier": "com.hope2luv.mental-health",
-      "appleTeamId": "AD8BSQX9YK"
+      "appleTeamId": "AD8BSQX9YK",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "package": "com.hope2luv.mentalhealth",
