@@ -1,6 +1,5 @@
 import type { Session, User } from '@supabase/supabase-js';
 import * as AppleAuthentication from 'expo-apple-authentication';
-import * as Linking from 'expo-linking';
 import * as WebBrowser from 'expo-web-browser';
 import {
   ReactNode,
@@ -16,6 +15,8 @@ import { Platform } from 'react-native';
 import { getSupabaseClient, isSupabaseConfigured, supabase } from '../services/supabase';
 
 WebBrowser.maybeCompleteAuthSession();
+
+const GOOGLE_AUTH_REDIRECT_URL = 'mentalhealth://auth/callback';
 
 type AuthContextValue = {
   error: string | null;
@@ -131,12 +132,11 @@ export function AuthProvider({ children }: AuthProviderProps) {
     setIsLoading(true);
 
     try {
-      const redirectTo = Linking.createURL('auth/callback');
       const client = getSupabaseClient();
       const { data, error: oauthError } = await client.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo,
+          redirectTo: GOOGLE_AUTH_REDIRECT_URL,
           skipBrowserRedirect: true,
         },
       });
@@ -149,7 +149,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
         throw new Error('Supabase không trả về URL đăng nhập Google.');
       }
 
-      const result = await WebBrowser.openAuthSessionAsync(data.url, redirectTo);
+      const result = await WebBrowser.openAuthSessionAsync(data.url, GOOGLE_AUTH_REDIRECT_URL);
 
       if (result.type === 'success') {
         const { error: exchangeError } = await client.auth.exchangeCodeForSession(result.url);
