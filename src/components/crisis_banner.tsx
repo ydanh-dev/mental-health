@@ -1,20 +1,18 @@
-import { Linking, Pressable, StyleSheet, Text, View } from 'react-native';
+import { DeviceEventEmitter, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { screeningContent } from '../data/screening_content';
 import { colors, radius, spacing } from '../styles/theme';
 
-const crisisPhoneNumber = '1800599920';
-
 export function CrisisBanner() {
-  const callNow = () => {
-    Linking.openURL(`tel:${crisisPhoneNumber}`);
+  const startChat = () => {
+    DeviceEventEmitter.emit('open_ai_chat');
   };
 
   return (
     <View style={styles.banner}>
-      <Text style={styles.icon}>!</Text>
+      <Text style={styles.icon}>💬</Text>
       <Text style={styles.body}>{screeningContent.crisis.body}</Text>
-      <Pressable accessibilityRole="button" onPress={callNow} style={styles.action}>
+      <Pressable accessibilityRole="button" onPress={startChat} style={styles.action}>
         <Text style={styles.actionText}>{screeningContent.crisis.action}</Text>
       </Pressable>
     </View>

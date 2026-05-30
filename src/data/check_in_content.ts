@@ -86,7 +86,7 @@ export const conceptContent = {
     {
       label: 'Tầng 1',
       title: 'Điểm vào',
-      tone: 'Khi thấy có gì đó không ổn',
+      tone: 'Hôm nay bạn đang thế nào?',
       items: ['Quick check-in', 'Viết / nói tự do', 'Body scan'],
     },
     {

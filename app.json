@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "mental-health",
+    "name": "Solen",
     "owner": "hope2luv",
     "slug": "mental-health",
     "scheme": "mentalhealth",
@@ -17,7 +17,7 @@
       "supportsTablet": true,
       "usesAppleSignIn": true,
       "bundleIdentifier": "com.hope2luv.mental-health",
-      "appleTeamId": "3SMD86HXBR"
+      "appleTeamId": "AD8BSQX9YK"
     },
     "android": {
       "package": "com.hope2luv.mentalhealth",

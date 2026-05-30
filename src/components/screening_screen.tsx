@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { screeningContent } from '../data/screening_content';
-import { calculateScores, type ScoreResult } from '../hooks/use_scoring';
+import { calculateScores, getSeverityLabel, type ScoreResult } from '../hooks/use_scoring';
 import { useScreening } from '../hooks/use_screening';
 import { colors, radius, spacing } from '../styles/theme';
 import { ScreeningState } from '../types/screening';
@@ -12,7 +12,7 @@ import { OptionPicker } from './option_picker';
 import { TypingIndicator } from './typing_indicator';
 
 type ScreeningScreenProps = {
-  onComplete: (scores: ScoreResult) => void;
+  onComplete: (scores: ScoreResult | null) => void;
 };
 
 export function ScreeningScreen({ onComplete }: ScreeningScreenProps) {
@@ -38,11 +38,6 @@ export function ScreeningScreen({ onComplete }: ScreeningScreenProps) {
     Math.max(0, answeredItems.length - Math.max(0, visibleQuestionCount - 1)),
   );
   const currentScale = currentItem ? data.scales[currentItem.question.scale] : undefined;
-  const progressText =
-    state.currentInstrument === 'done'
-      ? screeningContent.progress.done
-      : `${Math.min(answeredCount + 1, totalCount)} / ${totalCount}`;
-
   useEffect(() => {
     const timeoutId = setTimeout(() => {
       scrollViewRef.current?.scrollToEnd({ animated: true });
@@ -82,16 +77,12 @@ export function ScreeningScreen({ onComplete }: ScreeningScreenProps) {
     setPendingQuestionId(null);
     setVisibleQuestionCount(1);
     setCompletedNotifiedAt(undefined);
+    onComplete(null);
   };
 
   return (
     <View style={styles.container}>
       {state.flags.isCrisis && <CrisisBanner />}
-
-      <View style={styles.headerRow}>
-        <Text style={styles.eyebrow}>{screeningContent.intro.eyebrow}</Text>
-        <Text style={styles.progress}>{progressText}</Text>
-      </View>
 
       <View style={styles.titleBlock}>
         <Text style={styles.title}>{screeningContent.intro.title}</Text>
@@ -112,9 +103,7 @@ export function ScreeningScreen({ onComplete }: ScreeningScreenProps) {
           >
             <QuestionBubble
               answerLabel={getAnswerLabel(data.scales[item.question.scale], state.answers[item.question.id])}
-              instrumentLabel={item.instrument.id.toUpperCase()}
               text={item.question.text}
-              timeframe={item.instrument.timeframe}
             />
           </FadeInDownView>
         ))}
@@ -126,7 +115,7 @@ export function ScreeningScreen({ onComplete }: ScreeningScreenProps) {
               <View style={styles.transitionTextContent}>
                 <Text style={styles.transitionTitle}>Cảm ơn bạn đã hoàn thành phần đầu</Text>
                 <Text style={styles.transitionBody}>
-                  Dựa trên các câu trả lời ban đầu, chỉ số hạnh phúc tinh thần của bạn đang có dấu hiệu giảm sút. Mình xin phép hỏi thêm một số câu chuyên sâu về tình trạng lo âu, trầm cảm để hiểu rõ và đồng hành cùng bạn tốt nhất nhé.
+                  Mình xin hỏi thêm vài câu ngắn để hiểu rõ hơn điều bạn đang trải qua. Bạn vẫn chỉ cần chọn đáp án gần nhất với cảm giác hiện tại.
                 </Text>
               </View>
             </View>
@@ -144,9 +133,7 @@ export function ScreeningScreen({ onComplete }: ScreeningScreenProps) {
         {currentItem && !pendingQuestionId && state.currentInstrument !== 'done' && (
           <FadeInDownView distance={10} duration={360} key={currentItem.question.id}>
             <QuestionBubble
-              instrumentLabel={currentItem.instrument.id.toUpperCase()}
               text={currentItem.question.text}
-              timeframe={currentItem.instrument.timeframe}
             />
             {currentScale && (
               <OptionPicker
@@ -159,18 +146,77 @@ export function ScreeningScreen({ onComplete }: ScreeningScreenProps) {
           </FadeInDownView>
         )}
 
-        {state.currentInstrument === 'done' && (
-          <FadeInDownView distance={10} duration={360}>
-            <View style={styles.doneCard}>
-              <Text style={styles.doneTitle}>{screeningContent.completion.title}</Text>
-              <Text style={styles.doneBody}>{screeningContent.completion.body}</Text>
-              <Text style={styles.doneSignal}>{getCompletionSummary(state)}</Text>
-              <Pressable accessibilityRole="button" onPress={restart} style={styles.restartButton}>
-                <Text style={styles.restartText}>{screeningContent.completion.action}</Text>
-              </Pressable>
-            </View>
-          </FadeInDownView>
-        )}
+        {state.currentInstrument === 'done' && (() => {
+          const scoreResult = calculateScores(state.answers);
+          return (
+            <FadeInDownView distance={10} duration={360}>
+              <View style={styles.doneCard}>
+                <Text style={styles.doneTitle}>{screeningContent.completion.title}</Text>
+
+                <View style={styles.resultsDashboard}>
+                  <Text style={styles.dashboardHeadline}>Kết quả đánh giá của bạn:</Text>
+
+                  {/* WHO-5 Wellbeing */}
+                  <View style={[styles.scoreRow, !scoreResult.needsDeepScreen && styles.scoreRowLast]}>
+                    <View style={styles.scoreInfo}>
+                      <Text style={styles.scoreLabel}>Chỉ số Sức khỏe Tinh thần (WHO-5)</Text>
+                      <Text style={styles.scoreSub}>Phản ánh năng lượng sống và cảm giác bình yên</Text>
+                    </View>
+                    <View style={[styles.scoreBadge, scoreResult.who5_pct >= 50 ? styles.badgeGood : styles.badgeLow]}>
+                      <Text style={styles.scoreValue}>{scoreResult.who5_pct}%</Text>
+                    </View>
+                  </View>
+
+                  {scoreResult.needsDeepScreen && (
+                    <>
+                      {/* PHQ-9 Depression */}
+                      <View style={styles.scoreRow}>
+                        <View style={styles.scoreInfo}>
+                          <Text style={styles.scoreLabel}>Mức độ Trầm cảm (PHQ-9)</Text>
+                          <Text style={styles.scoreSub}>
+                            {getSeverityLabel('phq9', scoreResult.phq9)} ({scoreResult.phq9}/27 điểm)
+                          </Text>
+                        </View>
+                        <View style={[
+                          styles.scoreBadge,
+                          scoreResult.phq9 < 10 ? styles.badgeGood : scoreResult.phq9 < 15 ? styles.badgeWarning : styles.badgeDanger
+                        ]}>
+                          <Text style={styles.scoreValue}>{scoreResult.phq9}</Text>
+                        </View>
+                      </View>
+
+                      {/* GAD-7 Anxiety */}
+                      <View style={[styles.scoreRow, styles.scoreRowLast]}>
+                        <View style={styles.scoreInfo}>
+                          <Text style={styles.scoreLabel}>Mức độ Lo âu (GAD-7)</Text>
+                          <Text style={styles.scoreSub}>
+                            {getSeverityLabel('gad7', scoreResult.gad7)} ({scoreResult.gad7}/21 điểm)
+                          </Text>
+                        </View>
+                        <View style={[
+                          styles.scoreBadge,
+                          scoreResult.gad7 < 10 ? styles.badgeGood : scoreResult.gad7 < 15 ? styles.badgeWarning : styles.badgeDanger
+                        ]}>
+                          <Text style={styles.scoreValue}>{scoreResult.gad7}</Text>
+                        </View>
+                      </View>
+                    </>
+                  )}
+                </View>
+
+                <Text style={styles.doneBody}>
+                  Hôm nay bạn đã dũng cảm dừng lại và lắng nghe bản thân. Trợ lý AI sẵn sàng đồng hành nếu bạn muốn chia sẻ thêm.
+                </Text>
+
+                <View style={styles.doneFooter}>
+                  <Pressable accessibilityRole="button" onPress={restart} style={styles.restartButton}>
+                    <Text style={styles.restartText}>{screeningContent.completion.action}</Text>
+                  </Pressable>
+                </View>
+              </View>
+            </FadeInDownView>
+          );
+        })()}
       </ScrollView>
     </View>
   );
@@ -178,19 +224,13 @@ export function ScreeningScreen({ onComplete }: ScreeningScreenProps) {
 
 type QuestionBubbleProps = {
   answerLabel?: string;
-  instrumentLabel: string;
   text: string;
-  timeframe: string;
 };
 
-function QuestionBubble({ answerLabel, instrumentLabel, text, timeframe }: QuestionBubbleProps) {
+function QuestionBubble({ answerLabel, text }: QuestionBubbleProps) {
   return (
     <View style={styles.bubbleBlock}>
       <View style={styles.assistantBubble}>
-        <View style={styles.badgeRow}>
-          <Text style={styles.badge}>{instrumentLabel}</Text>
-          <Text style={styles.timeframe}>{timeframe}</Text>
-        </View>
         <Text style={styles.questionText}>{text}</Text>
       </View>
       {answerLabel && (
@@ -224,64 +264,44 @@ function getCompletionSummary(state: ScreeningState) {
 const styles = StyleSheet.create({
   answerBubble: {
     alignSelf: 'flex-end',
-    backgroundColor: colors.primary,
+    backgroundColor: colors.primarySoft,
+    borderColor: colors.borderStrong,
     borderRadius: radius.md,
+    borderWidth: 1.5,
     maxWidth: '78%',
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
+    shadowColor: colors.borderStrong,
+    shadowOffset: { height: 2, width: 2 },
+    shadowOpacity: 1,
+    shadowRadius: 0,
   },
   answerText: {
-    color: colors.onPrimary,
+    color: colors.textPrimary,
     fontSize: 14,
-    fontWeight: '800',
+    fontWeight: '900',
     lineHeight: 19,
   },
   assistantBubble: {
     backgroundColor: colors.surface,
-    borderColor: colors.border,
+    borderColor: colors.borderStrong,
     borderRadius: radius.md,
-    borderWidth: 1,
+    borderWidth: 1.5,
     flex: 1,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-  },
-  avatar: {
-    alignItems: 'center',
-    backgroundColor: colors.primary,
-    borderRadius: 17,
-    height: 34,
-    justifyContent: 'center',
-    width: 34,
-  },
-  avatarText: {
-    color: colors.onPrimary,
-    fontSize: 11,
-    fontWeight: '900',
-    lineHeight: 14,
-  },
-  badge: {
-    color: colors.accent,
-    fontSize: 11,
-    fontWeight: '900',
-    letterSpacing: 0,
-  },
-  badgeRow: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    gap: spacing.xs,
-    marginBottom: spacing.xs,
+    gap: spacing.sm,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
+    shadowColor: colors.borderStrong,
+    shadowOffset: { height: 3, width: 3 },
+    shadowOpacity: 1,
+    shadowRadius: 0,
   },
   bubbleBlock: {
-    gap: spacing.sm,
-  },
-  bubbleRow: {
-    alignItems: 'flex-start',
-    flexDirection: 'row',
-    gap: spacing.sm,
+    gap: spacing.md,
   },
   chatList: {
-    gap: spacing.md,
-    paddingBottom: spacing.xs,
+    gap: spacing.lg,
+    paddingBottom: spacing.sm,
   },
   container: {
     backgroundColor: colors.surfaceMuted,
@@ -323,29 +343,11 @@ const styles = StyleSheet.create({
     fontWeight: '900',
     lineHeight: 23,
   },
-  eyebrow: {
-    color: colors.accent,
-    fontSize: 12,
-    fontWeight: '900',
-    letterSpacing: 0,
-    textTransform: 'uppercase',
-  },
-  headerRow: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  progress: {
-    color: colors.textMuted,
-    fontSize: 12,
-    fontWeight: '800',
-    lineHeight: 16,
-  },
   questionText: {
     color: colors.textPrimary,
-    fontSize: 15,
-    fontWeight: '700',
-    lineHeight: 21,
+    fontSize: 17,
+    fontWeight: '900',
+    lineHeight: 24,
   },
   restartButton: {
     alignSelf: 'flex-start',
@@ -362,15 +364,9 @@ const styles = StyleSheet.create({
     fontWeight: '900',
     lineHeight: 17,
   },
-  timeframe: {
-    color: colors.textMuted,
-    fontSize: 11,
-    fontWeight: '800',
-    lineHeight: 15,
-  },
   title: {
     color: colors.textPrimary,
-    fontSize: 30,
+    fontSize: 22,
     fontWeight: '900',
     letterSpacing: 0,
     lineHeight: 35,
@@ -407,5 +403,80 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     fontSize: 13,
     lineHeight: 18,
+  },
+  resultsDashboard: {
+    marginVertical: spacing.sm,
+    padding: spacing.md,
+    backgroundColor: colors.surfaceMuted,
+    borderRadius: radius.md,
+    borderWidth: 1.5,
+    borderColor: colors.border,
+    gap: spacing.sm,
+  },
+  dashboardHeadline: {
+    fontSize: 12,
+    fontWeight: '900',
+    color: colors.textSecondary,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: 4,
+  },
+  scoreRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: spacing.xs,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  scoreRowLast: {
+    borderBottomWidth: 0,
+  },
+  scoreInfo: {
+    flex: 1,
+    marginRight: spacing.sm,
+  },
+  scoreLabel: {
+    fontSize: 13,
+    fontWeight: '900',
+    color: colors.textPrimary,
+  },
+  scoreSub: {
+    fontSize: 11,
+    color: colors.textMuted,
+    marginTop: 2,
+    fontWeight: '800',
+  },
+  scoreBadge: {
+    width: 48,
+    height: 32,
+    borderRadius: radius.sm,
+    borderWidth: 1.5,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  scoreValue: {
+    fontSize: 12,
+    fontWeight: '900',
+    color: colors.textPrimary,
+  },
+  badgeGood: {
+    backgroundColor: '#E2F5EC',
+    borderColor: colors.teal,
+  },
+  badgeLow: {
+    backgroundColor: '#FDF2E9',
+    borderColor: colors.accent,
+  },
+  badgeWarning: {
+    backgroundColor: '#FFF9E6',
+    borderColor: colors.clay,
+  },
+  badgeDanger: {
+    backgroundColor: '#FCE8E6',
+    borderColor: colors.clay,
+  },
+  doneFooter: {
+    marginTop: spacing.sm,
   },
 });

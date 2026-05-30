@@ -18,6 +18,41 @@ WebBrowser.maybeCompleteAuthSession();
 
 const GOOGLE_AUTH_REDIRECT_URL = 'mentalhealth://auth/callback';
 
+function parseAuthParams(url: string) {
+  const params: Record<string, string> = {};
+  
+  // Clean trailing hash or slashes first
+  const cleanUrl = url.replace(/[#/]+$/, '');
+  
+  // Parse query parameters (?key=value)
+  const queryStartIndex = cleanUrl.indexOf('?');
+  if (queryStartIndex !== -1) {
+    const queryString = cleanUrl.slice(queryStartIndex + 1).split('#')[0];
+    const pairs = queryString.split('&');
+    for (const pair of pairs) {
+      const [key, value] = pair.split('=');
+      if (key && value) {
+        params[decodeURIComponent(key)] = decodeURIComponent(value);
+      }
+    }
+  }
+  
+  // Parse hash parameters (#key=value)
+  const hashStartIndex = cleanUrl.indexOf('#');
+  if (hashStartIndex !== -1) {
+    const hashString = cleanUrl.slice(hashStartIndex + 1);
+    const pairs = hashString.split('&');
+    for (const pair of pairs) {
+      const [key, value] = pair.split('=');
+      if (key && value) {
+        params[decodeURIComponent(key)] = decodeURIComponent(value);
+      }
+    }
+  }
+  
+  return params;
+}
+
 type AuthContextValue = {
   error: string | null;
   isConfigured: boolean;
@@ -138,6 +173,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
         options: {
           redirectTo: GOOGLE_AUTH_REDIRECT_URL,
           skipBrowserRedirect: true,
+          queryParams: {
+            prompt: 'select_account',
+          },
         },
       });
 
@@ -152,10 +190,31 @@ export function AuthProvider({ children }: AuthProviderProps) {
       const result = await WebBrowser.openAuthSessionAsync(data.url, GOOGLE_AUTH_REDIRECT_URL);
 
       if (result.type === 'success') {
-        const { error: exchangeError } = await client.auth.exchangeCodeForSession(result.url);
+        const params = parseAuthParams(result.url);
 
-        if (exchangeError) {
-          throw exchangeError;
+        if (params.error) {
+          throw new Error(params.error_description || params.error);
+        }
+
+        if (params.access_token) {
+          // Implicit flow: establish session directly
+          const { error: sessionError } = await client.auth.setSession({
+            access_token: params.access_token,
+            refresh_token: params.refresh_token || '',
+          });
+
+          if (sessionError) {
+            throw sessionError;
+          }
+        } else if (params.code) {
+          // PKCE flow: exchange code string directly (NOT the full URL)
+          const { error: exchangeError } = await client.auth.exchangeCodeForSession(params.code);
+
+          if (exchangeError) {
+            throw exchangeError;
+          }
+        } else {
+          throw new Error('Không tìm thấy thông tin đăng nhập Google trong phản hồi.');
         }
       }
     } catch (signInError) {

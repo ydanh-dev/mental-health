@@ -12,8 +12,10 @@ type OptionPickerProps = {
 
 export function OptionPicker({ disabled, onSelect, scale, selectedValue }: OptionPickerProps) {
   return (
-    <View style={styles.optionColumn}>
-      {scale.options.map((option) => {
+    <View style={styles.optionWrap}>
+      <Text style={styles.helperText}>Chọn cảm giác gần nhất</Text>
+      <View style={styles.optionColumn}>
+        {scale.options.map((option, index) => {
         const selected = selectedValue === option.value;
 
         return (
@@ -31,36 +33,50 @@ export function OptionPicker({ disabled, onSelect, scale, selectedValue }: Optio
             ]}
           >
             <View style={styles.optionContent}>
-              <View style={[
-                styles.bulletCircle,
-                selected && styles.bulletCircleSelected,
-              ]}>
-                {selected && <View style={styles.bulletDotInner} />}
+              <View style={[styles.optionIndex, selected && styles.optionIndexSelected]}>
+                <Text style={[styles.optionIndexText, selected && styles.optionIndexTextSelected]}>
+                  {index + 1}
+                </Text>
               </View>
               <Text style={[styles.optionText, selected && styles.optionTextSelected]}>
                 {option.label}
               </Text>
+              <View style={[styles.optionMark, selected && styles.optionMarkSelected]}>
+                {selected && <View style={styles.optionMarkDot} />}
+              </View>
             </View>
           </Pressable>
         );
       })}
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
+  helperText: {
+    color: colors.textMuted,
+    fontSize: 12,
+    fontWeight: '800',
+    lineHeight: 16,
+    paddingHorizontal: spacing.xs,
+  },
   option: {
     backgroundColor: colors.surface,
-    borderColor: '#DCD4C7',
-    borderRadius: 16,
+    borderColor: colors.border,
+    borderRadius: 8,
     borderWidth: 1.5,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.sm,
     width: '100%',
   },
   optionSelected: {
-    backgroundColor: '#EFE7DA',
-    borderColor: '#A89E8F',
+    backgroundColor: colors.primarySoft,
+    borderColor: colors.borderStrong,
+    shadowColor: colors.borderStrong,
+    shadowOffset: { height: 2, width: 2 },
+    shadowOpacity: 1,
+    shadowRadius: 0,
   },
   optionDisabled: {
     opacity: 0.58,
@@ -70,42 +86,69 @@ const styles = StyleSheet.create({
     transform: [{ translateY: 1 }],
   },
   optionColumn: {
-    gap: spacing.sm,
-    marginTop: spacing.md,
+    gap: spacing.xs,
   },
   optionContent: {
-    flexDirection: 'row',
     alignItems: 'center',
+    flexDirection: 'row',
     gap: spacing.sm,
+    minHeight: 28,
   },
-  bulletCircle: {
-    width: 14,
-    height: 14,
+  optionIndex: {
+    alignItems: 'center',
+    backgroundColor: colors.surfaceMuted,
+    borderColor: colors.border,
+    borderRadius: 6,
+    borderWidth: 1,
+    height: 24,
+    justifyContent: 'center',
+    width: 24,
+  },
+  optionIndexSelected: {
+    backgroundColor: colors.accent,
+    borderColor: colors.borderStrong,
+  },
+  optionIndexText: {
+    color: colors.textMuted,
+    fontSize: 11,
+    fontWeight: '900',
+    lineHeight: 14,
+  },
+  optionIndexTextSelected: {
+    color: colors.onPrimary,
+  },
+  optionMark: {
+    alignItems: 'center',
+    borderColor: colors.border,
     borderRadius: 7,
     borderWidth: 1.5,
-    borderColor: '#C2B8A8',
-    alignItems: 'center',
+    height: 14,
     justifyContent: 'center',
-    backgroundColor: 'transparent',
+    width: 14,
   },
-  bulletCircleSelected: {
-    borderColor: '#8C7E6A',
+  optionMarkDot: {
+    backgroundColor: colors.accent,
+    borderRadius: 3,
+    height: 6,
+    width: 6,
   },
-  bulletDotInner: {
-    width: 7,
-    height: 7,
-    borderRadius: 3.5,
-    backgroundColor: '#8C7E6A',
+  optionMarkSelected: {
+    backgroundColor: colors.surface,
+    borderColor: colors.borderStrong,
   },
   optionText: {
-    color: '#3A352E',
+    color: colors.textSecondary,
+    flex: 1,
     fontSize: 14,
     fontWeight: '700',
-    lineHeight: 18,
-    flex: 1,
+    lineHeight: 19,
   },
   optionTextSelected: {
-    color: '#28231C',
-    fontWeight: '800',
+    color: colors.textPrimary,
+    fontWeight: '900',
+  },
+  optionWrap: {
+    gap: spacing.xs,
+    marginTop: spacing.md,
   },
 });

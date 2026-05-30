@@ -1,16 +1,16 @@
-import type { ScoreResult } from '../hooks/use_scoring';
-import { sendMessage } from './groq';
+import type { ScoreResult } from "../hooks/use_scoring";
+import { sendMessage } from "./groq";
 
 export type AIChatMessage = {
   content: string;
   id: string;
-  role: 'assistant' | 'user';
+  role: "assistant" | "user";
 };
 
 export type AIChatResponse = {
   message: string;
   refused: boolean;
-  riskLevel: 'low' | 'medium' | 'high' | 'crisis';
+  riskLevel: "low" | "medium" | "high" | "crisis";
   safetyMessage?: string;
 };
 
@@ -19,7 +19,7 @@ export async function requestAIChat(
   scores?: ScoreResult | null,
 ): Promise<AIChatResponse> {
   if (!scores) {
-    throw new Error('Bạn cần hoàn thành phần check-in trước khi trò chuyện với AI.');
+    throw new Error("Bạn cần hoàn thành phần check-in trước khi trò chuyện.");
   }
 
   const message = await sendMessage(
@@ -33,9 +33,13 @@ export async function requestAIChat(
   return {
     message,
     refused: false,
-    riskLevel: scores.isCrisis ? 'crisis' : scores.needsDeepScreen ? 'medium' : 'low',
+    riskLevel: scores.isCrisis
+      ? "crisis"
+      : scores.needsDeepScreen
+        ? "medium"
+        : "low",
     safetyMessage: scores.isCrisis
-      ? 'Nếu bạn đang nghĩ đến việc tự làm hại bản thân, hãy liên hệ ngay với người bạn tin cậy, dịch vụ khẩn cấp địa phương, hoặc đường dây 1800 599 920.'
+      ? "Nếu bạn đang cảm thấy quá tải hoặc kiệt sức, hãy thử dành vài phút hít thở sâu, đi dạo nhẹ nhàng hoặc nhắn tin chia sẻ cùng một người bạn thân thiết nhé."
       : undefined,
   };
 }

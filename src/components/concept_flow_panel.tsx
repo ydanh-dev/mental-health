@@ -138,7 +138,7 @@ const styles = StyleSheet.create({
   layerTone: {
     color: colors.textMuted,
     flex: 1,
-    fontSize: 12,
+    fontSize: 14,
     lineHeight: 17,
     textAlign: 'right',
   },

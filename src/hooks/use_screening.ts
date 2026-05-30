@@ -1,20 +1,21 @@
-import { useMemo, useState } from 'react';
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useEffect, useMemo, useState } from "react";
 
-import screeningJson from '../data/screening.json';
-import { calculateScores } from './use_scoring';
+import screeningJson from "../data/screening.json";
 import {
   ScreeningData,
   ScreeningInstrument,
   ScreeningInstrumentId,
   ScreeningQueueItem,
   ScreeningState,
-} from '../types/screening';
+} from "../types/screening";
+import { calculateScores } from "./use_scoring";
 
 const screeningData = screeningJson as unknown as ScreeningData;
 
 const initialState: ScreeningState = {
   answers: {},
-  currentInstrument: 'who5',
+  currentInstrument: "who5",
   currentQuestionIndex: 0,
   flags: {
     isCrisis: false,
@@ -23,17 +24,48 @@ const initialState: ScreeningState = {
   scores: {},
 };
 
+const SCREENING_STORAGE_KEY = "@screening_state_v1";
+
 export function useScreening() {
   const [state, setState] = useState<ScreeningState>(initialState);
+  const [isLoaded, setIsLoaded] = useState(false);
+
+  useEffect(() => {
+    AsyncStorage.getItem(SCREENING_STORAGE_KEY)
+      .then((value) => {
+        if (value) {
+          const parsed = JSON.parse(value);
+          if (parsed.completedAt) {
+            parsed.completedAt = new Date(parsed.completedAt);
+          }
+          setState(parsed);
+        }
+      })
+      .catch((err) => console.log("Error loading screening state:", err))
+      .finally(() => setIsLoaded(true));
+  }, []);
+
+  useEffect(() => {
+    if (!isLoaded) return;
+    AsyncStorage.setItem(SCREENING_STORAGE_KEY, JSON.stringify(state)).catch(
+      (err) => console.log("Error saving screening state:", err),
+    );
+  }, [state, isLoaded]);
   const instruments = useMemo(
     () =>
       Object.fromEntries(
-        screeningData.instruments.map((instrument) => [instrument.id, instrument]),
+        screeningData.instruments.map((instrument) => [
+          instrument.id,
+          instrument,
+        ]),
       ) as Record<ScreeningInstrumentId, ScreeningInstrument>,
     [],
   );
 
-  const queue = useMemo(() => buildQueue(instruments, state), [instruments, state]);
+  const queue = useMemo(
+    () => buildQueue(instruments, state),
+    [instruments, state],
+  );
   const answeredCount = useMemo(
     () => queue.filter((item) => state.answers[item.question.id]).length,
     [queue, state.answers],
@@ -42,7 +74,7 @@ export function useScreening() {
   const totalCount = queue.length;
 
   const answerCurrent = (value: string) => {
-    if (!currentItem || state.currentInstrument === 'done') {
+    if (!currentItem || state.currentInstrument === "done") {
       return;
     }
 
@@ -58,8 +90,7 @@ export function useScreening() {
         who5: scoreResult.who5_raw,
         who5_percentage: scoreResult.who5_pct,
       };
-      const needsDeepScreening =
-        scoreResult.needsDeepScreen;
+      const needsDeepScreening = scoreResult.needsDeepScreen;
       const isCrisis =
         current.flags.isCrisis ||
         (currentItem.question.crisis_trigger === true && scoreResult.isCrisis);
@@ -79,7 +110,7 @@ export function useScreening() {
         return {
           ...nextState,
           completedAt: new Date(),
-          currentInstrument: 'done',
+          currentInstrument: "done",
           currentQuestionIndex: nextQueue.length,
         };
       }
@@ -112,11 +143,13 @@ function buildQueue(
   instruments: Record<ScreeningInstrumentId, ScreeningInstrument>,
   state: ScreeningState,
 ): ScreeningQueueItem[] {
-  const who5Items = instruments.who5.questions.map((question, questionIndex) => ({
-    instrument: instruments.who5,
-    question,
-    questionIndex,
-  }));
+  const who5Items = instruments.who5.questions.map(
+    (question, questionIndex) => ({
+      instrument: instruments.who5,
+      question,
+      questionIndex,
+    }),
+  );
 
   if (who5Items.some((item) => !state.answers[item.question.id])) {
     return who5Items;
@@ -129,7 +162,10 @@ function buildQueue(
   }
 
   const deepItems: ScreeningQueueItem[] = [];
-  const maxLength = Math.max(instruments.phq9.questions.length, instruments.gad7.questions.length);
+  const maxLength = Math.max(
+    instruments.phq9.questions.length,
+    instruments.gad7.questions.length,
+  );
 
   for (let index = 0; index < maxLength; index += 1) {
     const phqQuestion = instruments.phq9.questions[index];

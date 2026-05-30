@@ -2,6 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Animated,
+  DeviceEventEmitter,
   Easing,
   KeyboardAvoidingView,
   Platform,
@@ -16,7 +17,7 @@ import {
 import { aiChatContent, buildInitialAIChatMessages } from '../data/ai_chat_content';
 import type { ScoreResult } from '../hooks/use_scoring';
 import { AIChatMessage, requestAIChat } from '../services/ai_chat';
-import { colors, radius, spacing } from '../styles/theme';
+import { colors, spacing } from '../styles/theme';
 
 const { conversationsStorageKey, storageKey } = aiChatContent;
 const minimumAssistantDelayMs = 2000;
@@ -97,6 +98,15 @@ export function AIChatFab({ scores }: AIChatFabProps) {
 
     return () => {
       active = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    const subscription = DeviceEventEmitter.addListener('open_ai_chat', () => {
+      setIsOpen(true);
+    });
+    return () => {
+      subscription.remove();
     };
   }, []);
 
@@ -314,20 +324,20 @@ export function AIChatFab({ scores }: AIChatFabProps) {
                   <Text style={styles.avatarText}>AI</Text>
                 </View>
                 <View style={styles.headerCopy}>
-                  <Text numberOfLines={1} style={styles.panelEyebrow}>
+                  {/* <Text numberOfLines={1} style={styles.panelEyebrow}>
                     {aiChatContent.header.eyebrow}
-                  </Text>
+                  </Text> */}
                   <Text numberOfLines={1} style={styles.panelTitle}>
                     {aiChatContent.header.title}
                   </Text>
-                  <View style={styles.statusContainer}>
+                  {/* <View style={styles.statusContainer}>
                     <View style={[styles.statusDot, hasSavedConversation && styles.statusDotActive]} />
                     <Text numberOfLines={2} style={styles.panelStatus}>
                       {hasSavedConversation
                         ? aiChatContent.header.savedStatus
                         : aiChatContent.header.emptyStatus}
                     </Text>
-                  </View>
+                  </View> */}
                 </View>
               </View>
               <View style={styles.headerActions}>
@@ -359,7 +369,7 @@ export function AIChatFab({ scores }: AIChatFabProps) {
                     {conversations.length} cuộc hội thoại được lưu
                   </Text>
                 </View>
-                
+
                 <Pressable
                   accessibilityRole="button"
                   disabled={isSending}
@@ -421,7 +431,7 @@ export function AIChatFab({ scores }: AIChatFabProps) {
                     );
                   })}
                 </ScrollView>
-                
+
                 <Pressable
                   accessibilityRole="button"
                   onPress={() => setIsHistoryOpen(false)}
@@ -440,17 +450,17 @@ export function AIChatFab({ scores }: AIChatFabProps) {
                 >
                   {messages.map((message) => (
                     <View
-                       key={message.id}
-                       style={[
-                         styles.messageBubble,
-                         message.role === 'user' ? styles.userBubble : styles.assistantBubble,
-                       ]}
+                      key={message.id}
+                      style={[
+                        styles.messageBubble,
+                        message.role === 'user' ? styles.userBubble : styles.assistantBubble,
+                      ]}
                     >
                       <Text
-                         style={[
-                           styles.messageText,
-                           message.role === 'user' && styles.userMessageText,
-                         ]}
+                        style={[
+                          styles.messageText,
+                          message.role === 'user' && styles.userMessageText,
+                        ]}
                       >
                         {message.content}
                       </Text>
@@ -601,23 +611,22 @@ function isConversationList(value: unknown): value is AIChatConversation[] {
 
 function sortConversations(conversations: AIChatConversation[]) {
   return [...conversations].sort((first, second) => second.updatedAt - first.updatedAt);
-}const styles = StyleSheet.create({
+} const styles = StyleSheet.create({
   assistantBubble: {
     alignSelf: 'flex-start',
     backgroundColor: colors.surface,
-    borderColor: colors.border,
-    borderLeftWidth: 4,
-    borderLeftColor: colors.teal,
+    borderColor: colors.borderStrong,
     borderWidth: 1.5,
     borderRadius: 8,
     shadowColor: colors.borderStrong,
-    shadowOffset: { height: 2, width: 2 },
-    shadowOpacity: 0.05,
+    shadowOffset: { height: 2.5, width: 2.5 },
+    shadowOpacity: 1,
     shadowRadius: 0,
     marginVertical: 6,
     maxWidth: '85%',
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
+    marginLeft: 4,
   },
   avatar: {
     alignItems: 'center',
@@ -954,8 +963,10 @@ function sortConversations(conversations: AIChatConversation[]) {
   },
   fabWrap: {
     bottom: spacing.xl,
+    elevation: 32,
     position: 'absolute',
     right: spacing.xl,
+    zIndex: 32,
   },
   headerActions: {
     alignItems: 'center',
@@ -990,18 +1001,22 @@ function sortConversations(conversations: AIChatConversation[]) {
   },
   layer: {
     bottom: 0,
+    elevation: 30,
     left: 0,
     position: 'absolute',
     right: 0,
     top: 0,
+    zIndex: 30,
   },
   backdrop: {
+    backgroundColor: 'rgba(28, 25, 23, 0.52)',
     bottom: 0,
+    elevation: 30,
     left: 0,
     position: 'absolute',
     right: 0,
     top: 0,
-    backgroundColor: 'rgba(28, 25, 23, 0.45)',
+    zIndex: 30,
   },
   backdropPressable: {
     flex: 1,
@@ -1084,9 +1099,11 @@ function sortConversations(conversations: AIChatConversation[]) {
   },
   panelWrap: {
     bottom: 92,
+    elevation: 31,
     left: spacing.md,
     position: 'absolute',
     right: spacing.md,
+    zIndex: 31,
   },
   panelCloseGlyph: {
     alignItems: 'center',
