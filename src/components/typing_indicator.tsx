@@ -4,7 +4,7 @@ import { colors, spacing } from '../styles/theme';
 
 export function TypingIndicator() {
   return (
-    <View accessibilityLabel="AI đang gõ" style={styles.row}>
+    <View accessibilityLabel="AI đang phản hồi" style={styles.row}>
       <View style={styles.dot} />
       <View style={styles.dot} />
       <View style={styles.dot} />
