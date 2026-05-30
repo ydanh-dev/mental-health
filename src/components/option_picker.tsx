@@ -1,7 +1,7 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { ScreeningScale } from '../types/screening';
 import { colors, spacing } from '../styles/theme';
+import { ScreeningScale } from '../types/screening';
 
 type OptionPickerProps = {
   disabled?: boolean;
@@ -13,41 +13,41 @@ type OptionPickerProps = {
 export function OptionPicker({ disabled, onSelect, scale, selectedValue }: OptionPickerProps) {
   return (
     <View style={styles.optionWrap}>
-      <Text style={styles.helperText}>Chọn cảm giác gần nhất</Text>
+      <Text style={styles.helperText}>Chọn cảm giác của bạn bây giờ</Text>
       <View style={styles.optionColumn}>
         {scale.options.map((option, index) => {
-        const selected = selectedValue === option.value;
+          const selected = selectedValue === option.value;
 
-        return (
-          <Pressable
-            accessibilityRole="button"
-            accessibilityState={{ disabled, selected }}
-            disabled={disabled}
-            key={option.value}
-            onPress={() => onSelect(option.value)}
-            style={({ pressed }) => [
-              styles.option,
-              selected && styles.optionSelected,
-              pressed && !disabled && styles.optionPressed,
-              disabled && !selected && styles.optionDisabled,
-            ]}
-          >
-            <View style={styles.optionContent}>
-              <View style={[styles.optionIndex, selected && styles.optionIndexSelected]}>
-                <Text style={[styles.optionIndexText, selected && styles.optionIndexTextSelected]}>
-                  {index + 1}
+          return (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityState={{ disabled, selected }}
+              disabled={disabled}
+              key={option.value}
+              onPress={() => onSelect(option.value)}
+              style={({ pressed }) => [
+                styles.option,
+                selected && styles.optionSelected,
+                pressed && !disabled && styles.optionPressed,
+                disabled && !selected && styles.optionDisabled,
+              ]}
+            >
+              <View style={styles.optionContent}>
+                <View style={[styles.optionIndex, selected && styles.optionIndexSelected]}>
+                  <Text style={[styles.optionIndexText, selected && styles.optionIndexTextSelected]}>
+                    {index + 1}
+                  </Text>
+                </View>
+                <Text style={[styles.optionText, selected && styles.optionTextSelected]}>
+                  {option.label}
                 </Text>
+                <View style={[styles.optionMark, selected && styles.optionMarkSelected]}>
+                  {selected && <View style={styles.optionMarkDot} />}
+                </View>
               </View>
-              <Text style={[styles.optionText, selected && styles.optionTextSelected]}>
-                {option.label}
-              </Text>
-              <View style={[styles.optionMark, selected && styles.optionMarkSelected]}>
-                {selected && <View style={styles.optionMarkDot} />}
-              </View>
-            </View>
-          </Pressable>
-        );
-      })}
+            </Pressable>
+          );
+        })}
       </View>
     </View>
   );
