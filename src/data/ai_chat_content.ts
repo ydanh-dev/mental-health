@@ -2,8 +2,6 @@ import type { ScoreResult } from "../hooks/use_scoring";
 import type { AIChatMessage } from "../services/ai_chat";
 
 export const aiChatContent = {
-  conversationsStorageKey: "mental-health.ai-chat.conversations.v1",
-  storageKey: "mental-health.ai-chat.messages.v1",
   initialMessages: [
     {
       content:

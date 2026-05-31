@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useEffect, useState } from 'react';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { screeningContent } from '../data/screening_content';
 import { calculateScores, type ScoreResult } from '../hooks/use_scoring';
@@ -22,26 +22,12 @@ export function ScreeningScreen({ onComplete }: ScreeningScreenProps) {
     queue,
     reset,
     state,
+    totalCount,
   } = useScreening();
-  const scrollViewRef = useRef<ScrollView>(null);
   const [pendingQuestionId, setPendingQuestionId] = useState<string | null>(null);
-  const [visibleQuestionCount, setVisibleQuestionCount] = useState(1);
+  const [selectedAnswer, setSelectedAnswer] = useState<string | undefined>();
   const [completedNotifiedAt, setCompletedNotifiedAt] = useState<Date | undefined>();
-  const answeredItems = useMemo(
-    () => queue.filter((item) => state.answers[item.question.id]),
-    [queue, state.answers],
-  );
-  const visibleAnsweredItems = answeredItems.slice(
-    Math.max(0, answeredItems.length - Math.max(0, visibleQuestionCount - 1)),
-  );
   const currentScale = currentItem ? data.scales[currentItem.question.scale] : undefined;
-  useEffect(() => {
-    const timeoutId = setTimeout(() => {
-      scrollViewRef.current?.scrollToEnd({ animated: true });
-    }, 80);
-
-    return () => clearTimeout(timeoutId);
-  }, [answeredItems.length, currentItem?.question.id, pendingQuestionId, state.currentInstrument]);
 
   useEffect(() => {
     if (!state.completedAt || completedNotifiedAt === state.completedAt) {
@@ -52,8 +38,12 @@ export function ScreeningScreen({ onComplete }: ScreeningScreenProps) {
     onComplete(calculateScores(state.answers));
   }, [completedNotifiedAt, onComplete, state]);
 
-  const chooseOption = (value: string) => {
-    if (!currentItem || pendingQuestionId) {
+  useEffect(() => {
+    setSelectedAnswer(undefined);
+  }, [currentItem?.question.id]);
+
+  const submitAnswer = () => {
+    if (!currentItem || pendingQuestionId || !selectedAnswer) {
       return;
     }
 
@@ -61,10 +51,9 @@ export function ScreeningScreen({ onComplete }: ScreeningScreenProps) {
     const delay = isTransition ? 3000 : 400;
 
     setPendingQuestionId(currentItem.question.id);
-    answerCurrent(value);
+    answerCurrent(selectedAnswer);
 
     setTimeout(() => {
-      setVisibleQuestionCount((current) => current + 1);
       setPendingQuestionId(null);
     }, delay);
   };
@@ -72,38 +61,37 @@ export function ScreeningScreen({ onComplete }: ScreeningScreenProps) {
   const restart = () => {
     reset();
     setPendingQuestionId(null);
-    setVisibleQuestionCount(1);
+    setSelectedAnswer(undefined);
     setCompletedNotifiedAt(undefined);
     onComplete(null);
   };
+  const currentQuestionNumber = state.currentInstrument === 'done'
+    ? totalCount
+    : Math.min(answeredCount + 1, totalCount);
+  const progressValue = totalCount > 0
+    ? Math.min(state.currentInstrument === 'done' ? 1 : answeredCount / totalCount, 1)
+    : 0;
 
   return (
     <View style={styles.container}>
       <View style={styles.titleBlock}>
         <Text style={styles.title}>{screeningContent.intro.title}</Text>
         <Text style={styles.description}>{screeningContent.intro.description}</Text>
+        <View style={styles.progressBlock}>
+          <View style={styles.progressMeta}>
+            <Text style={styles.progressLabel}>Câu {currentQuestionNumber}/{totalCount}</Text>
+            <Text style={styles.progressHint}>
+              {state.currentInstrument === 'done' ? screeningContent.progress.done : `${answeredCount} đã qua`}
+            </Text>
+          </View>
+          <View style={styles.progressTrack}>
+            <View style={[styles.progressFill, { width: `${progressValue * 100}%` }]} />
+          </View>
+        </View>
       </View>
 
-      <ScrollView
-        contentContainerStyle={styles.chatList}
-        ref={scrollViewRef}
-        showsVerticalScrollIndicator={false}
-      >
-        {visibleAnsweredItems.map((item, index) => (
-          <FadeInDownView
-            delay={index === visibleAnsweredItems.length - 1 ? 60 : 0}
-            distance={8}
-            duration={320}
-            key={item.question.id}
-          >
-            <QuestionBubble
-              answerLabel={getAnswerLabel(data.scales[item.question.scale], state.answers[item.question.id])}
-              text={item.question.text}
-            />
-          </FadeInDownView>
-        ))}
-
-        {state.flags.needsDeepScreening && answeredCount >= 5 && (
+      <View style={styles.stepContent}>
+        {state.flags.needsDeepScreening && answeredCount >= 5 && state.currentInstrument !== 'done' && (
           <FadeInDownView distance={8} duration={300}>
             <View style={styles.transitionBubble}>
               <Text style={styles.transitionEmoji}>🌱</Text>
@@ -117,14 +105,6 @@ export function ScreeningScreen({ onComplete }: ScreeningScreenProps) {
           </FadeInDownView>
         )}
 
-        {pendingQuestionId && (
-          <FadeInDownView distance={8} duration={220}>
-            <View style={styles.assistantBubble}>
-              <TypingIndicator />
-            </View>
-          </FadeInDownView>
-        )}
-
         {currentItem && !pendingQuestionId && state.currentInstrument !== 'done' && (
           <FadeInDownView distance={10} duration={360} key={currentItem.question.id}>
             <QuestionBubble
@@ -133,11 +113,20 @@ export function ScreeningScreen({ onComplete }: ScreeningScreenProps) {
             {currentScale && (
               <OptionPicker
                 disabled={Boolean(pendingQuestionId)}
-                onSelect={chooseOption}
+                onNext={submitAnswer}
+                onSelect={setSelectedAnswer}
                 scale={currentScale}
-                selectedValue={state.answers[currentItem.question.id]}
+                selectedValue={selectedAnswer}
               />
             )}
+          </FadeInDownView>
+        )}
+
+        {pendingQuestionId && (
+          <FadeInDownView distance={8} duration={220}>
+            <View style={styles.loadingBubble}>
+              <TypingIndicator />
+            </View>
           </FadeInDownView>
         )}
 
@@ -156,79 +145,59 @@ export function ScreeningScreen({ onComplete }: ScreeningScreenProps) {
             </View>
           </FadeInDownView>
         )}
-      </ScrollView>
+      </View>
     </View>
   );
 }
 
 type QuestionBubbleProps = {
-  answerLabel?: string;
   text: string;
 };
 
-function QuestionBubble({ answerLabel, text }: QuestionBubbleProps) {
+function QuestionBubble({ text }: QuestionBubbleProps) {
   return (
-    <View style={styles.bubbleBlock}>
+    <View style={styles.questionRow}>
+      <View style={styles.assistantAvatar}>
+        <Text style={styles.assistantAvatarText}>A</Text>
+      </View>
       <View style={styles.assistantBubble}>
         <Text style={styles.questionText}>{text}</Text>
       </View>
-      {answerLabel && (
-        <View style={styles.answerBubble}>
-          <Text style={styles.answerText}>{answerLabel}</Text>
-        </View>
-      )}
     </View>
   );
 }
 
-function getAnswerLabel(
-  scale: { options: Array<{ label: string; value: string }> },
-  value: string,
-) {
-  return scale.options.find((option) => option.value === value)?.label ?? value;
-}
-
 const styles = StyleSheet.create({
-  answerBubble: {
-    alignSelf: 'flex-end',
-    backgroundColor: colors.primarySoft,
-    borderColor: colors.borderStrong,
-    borderRadius: radius.md,
-    borderWidth: 1.5,
-    maxWidth: '78%',
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    shadowColor: colors.borderStrong,
-    shadowOffset: { height: 2, width: 2 },
-    shadowOpacity: 1,
-    shadowRadius: 0,
-  },
-  answerText: {
-    color: colors.textPrimary,
-    fontSize: 14,
-    fontWeight: '900',
-    lineHeight: 19,
-  },
   assistantBubble: {
     backgroundColor: colors.surface,
-    borderColor: colors.borderStrong,
+    borderColor: colors.lineSoft,
     borderRadius: radius.md,
-    borderWidth: 1.5,
+    borderWidth: 1,
     flex: 1,
     gap: spacing.sm,
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.md,
-    shadowColor: colors.borderStrong,
-    shadowOffset: { height: 3, width: 3 },
-    shadowOpacity: 1,
+    shadowColor: colors.border,
+    shadowOffset: { height: 1, width: 1 },
+    shadowOpacity: 0.14,
     shadowRadius: 0,
   },
-  bubbleBlock: {
-    gap: spacing.md,
+  assistantAvatar: {
+    alignItems: 'center',
+    backgroundColor: colors.teal,
+    borderColor: colors.lineSoft,
+    borderRadius: 16,
+    borderWidth: 1,
+    height: 32,
+    justifyContent: 'center',
+    marginTop: 2,
+    width: 32,
   },
-  chatList: {
-    gap: spacing.lg,
-    paddingBottom: spacing.sm,
+  assistantAvatarText: {
+    color: colors.onPrimary,
+    fontSize: 13,
+    fontWeight: '900',
+    lineHeight: 16,
   },
   container: {
     backgroundColor: colors.surfaceMuted,
@@ -264,11 +233,60 @@ const styles = StyleSheet.create({
     fontWeight: '900',
     lineHeight: 23,
   },
+  loadingBubble: {
+    alignSelf: 'flex-start',
+    backgroundColor: colors.surface,
+    borderColor: colors.lineSoft,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
+  },
   questionText: {
     color: colors.textPrimary,
     fontSize: 17,
     fontWeight: '900',
     lineHeight: 24,
+  },
+  questionRow: {
+    alignItems: 'flex-start',
+    flexDirection: 'row',
+    gap: spacing.sm,
+  },
+  stepContent: {
+    gap: spacing.lg,
+  },
+  progressBlock: {
+    gap: spacing.xs,
+    paddingTop: spacing.xs,
+  },
+  progressFill: {
+    backgroundColor: colors.accent,
+    borderRadius: 999,
+    height: '100%',
+  },
+  progressHint: {
+    color: colors.textMuted,
+    fontSize: 12,
+    fontWeight: '800',
+    lineHeight: 16,
+  },
+  progressLabel: {
+    color: colors.textPrimary,
+    fontSize: 13,
+    fontWeight: '900',
+    lineHeight: 17,
+  },
+  progressMeta: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  progressTrack: {
+    backgroundColor: colors.lineSoft,
+    borderRadius: 999,
+    height: 7,
+    overflow: 'hidden',
   },
   restartButton: {
     alignSelf: 'flex-start',

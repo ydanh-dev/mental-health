@@ -1,4 +1,3 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Animated,
@@ -15,11 +14,12 @@ import {
 } from 'react-native';
 
 import { aiChatContent, buildInitialAIChatMessages } from '../data/ai_chat_content';
+import { useAuth } from '../hooks/use_auth';
 import type { ScoreResult } from '../hooks/use_scoring';
 import { AIChatMessage, requestAIChat } from '../services/ai_chat';
+import { getSupabaseClient } from '../services/supabase';
 import { colors, spacing } from '../styles/theme';
 
-const { conversationsStorageKey, storageKey } = aiChatContent;
 const minimumAssistantDelayMs = 2000;
 
 type AIChatConversation = {
@@ -34,13 +34,30 @@ type AIChatFabProps = {
   scores?: ScoreResult | null;
 };
 
+type ConversationRow = {
+  created_at: string;
+  id: string;
+  title: string | null;
+  updated_at: string;
+  user_id: string;
+};
+
+type MessageRow = {
+  content: string;
+  conversation_id: string;
+  created_at: string;
+  id: string;
+  role: 'assistant' | 'user';
+  user_id: string;
+};
+
 export function AIChatFab({ scores }: AIChatFabProps) {
+  const { user } = useAuth();
   const fabScale = useRef(new Animated.Value(1)).current;
   const panelProgress = useRef(new Animated.Value(0)).current;
   const scrollViewRef = useRef<ScrollView>(null);
   const [draft, setDraft] = useState('');
   const [error, setError] = useState<string | null>(null);
-  const [isLoaded, setIsLoaded] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
   const [isSending, setIsSending] = useState(false);
@@ -50,7 +67,10 @@ export function AIChatFab({ scores }: AIChatFabProps) {
     (conversation) => conversation.id === activeConversationId,
   );
   const initialMessages = useMemo(() => buildInitialAIChatMessages(scores), [scores]);
-  const messages = activeConversation?.messages ?? initialMessages;
+  const messages =
+    activeConversation && activeConversation.messages.length > 0
+      ? activeConversation.messages
+      : initialMessages;
   const canSend = draft.trim().length > 0 && !isSending;
   const hasSavedConversation = conversations.some((conversation) =>
     conversation.messages.some((message) => message.role === 'user'),
@@ -59,47 +79,31 @@ export function AIChatFab({ scores }: AIChatFabProps) {
   useEffect(() => {
     let active = true;
 
-    Promise.all([
-      AsyncStorage.getItem(conversationsStorageKey),
-      AsyncStorage.getItem(storageKey),
-    ])
-      .then(([conversationValue, legacyValue]) => {
+    if (!user?.id) {
+      setConversations([]);
+      setActiveConversationId(null);
+      return () => {
+        active = false;
+      };
+    }
+
+    loadRemoteConversations(user.id)
+      .then((remoteConversations) => {
         if (!active) {
           return;
         }
 
-        const storedConversations = conversationValue ? JSON.parse(conversationValue) : null;
-
-        if (isConversationList(storedConversations) && storedConversations.length > 0) {
-          const sortedConversations = sortConversations(storedConversations);
-          setConversations(sortedConversations);
-          setActiveConversationId(sortedConversations[0].id);
-          return;
-        }
-
-        const legacyMessages = legacyValue ? JSON.parse(legacyValue) : null;
-        const initialConversation = createConversation(
-          isMessageList(legacyMessages) && legacyMessages.length > 0
-            ? legacyMessages
-            : initialMessages,
-        );
-
-        setConversations([initialConversation]);
-        setActiveConversationId(initialConversation.id);
+        setConversations(remoteConversations);
+        setActiveConversationId(remoteConversations[0]?.id ?? null);
       })
       .catch(() => {
         setError(aiChatContent.errors.load);
-      })
-      .finally(() => {
-        if (active) {
-          setIsLoaded(true);
-        }
       });
 
     return () => {
       active = false;
     };
-  }, []);
+  }, [user?.id]);
 
   useEffect(() => {
     const subscription = DeviceEventEmitter.addListener('open_ai_chat', () => {
@@ -109,16 +113,6 @@ export function AIChatFab({ scores }: AIChatFabProps) {
       subscription.remove();
     };
   }, []);
-
-  useEffect(() => {
-    if (!isLoaded) {
-      return;
-    }
-
-    AsyncStorage.setItem(conversationsStorageKey, JSON.stringify(conversations)).catch(() => {
-      setError(aiChatContent.errors.save);
-    });
-  }, [conversations, isLoaded]);
 
   useEffect(() => {
     if (!isOpen) {
@@ -179,16 +173,25 @@ export function AIChatFab({ scores }: AIChatFabProps) {
   const sendMessage = async () => {
     const content = draft.trim();
 
-    if (!content || isSending) {
+    if (!content || isSending || !user?.id) {
       return;
     }
 
-    const userMessage: AIChatMessage = {
-      content,
-      id: createMessageId('user'),
-      role: 'user',
-    };
-    const conversationId = activeConversationId ?? createMessageId('chat');
+    let conversationId = activeConversationId;
+
+    if (!conversationId) {
+      try {
+        const nextConversation = await createRemoteConversation(user.id, initialMessages);
+        conversationId = nextConversation.id;
+        setConversations((current) => sortConversations([nextConversation, ...current]));
+        setActiveConversationId(conversationId);
+      } catch (createError) {
+        setError(createError instanceof Error ? createError.message : aiChatContent.errors.save);
+        return;
+      }
+    }
+
+    const userMessage = createLocalMessage(content, 'user');
     const nextMessages = [...messages, userMessage];
 
     setDraft('');
@@ -197,19 +200,35 @@ export function AIChatFab({ scores }: AIChatFabProps) {
     updateConversationMessages(conversationId, nextMessages);
 
     try {
+      const savedUserMessage = await insertRemoteMessage({
+        content,
+        conversationId,
+        role: 'user',
+        userId: user.id,
+      });
+      const persistedUserMessages = [
+        ...messages,
+        savedUserMessage,
+      ];
+
+      updateConversationMessages(conversationId, persistedUserMessages);
+
       const [response] = await Promise.all([
-        requestAIChat(nextMessages, scores),
+        requestAIChat(persistedUserMessages, scores),
         wait(minimumAssistantDelayMs),
       ]);
+      const savedAssistantMessage = await insertRemoteMessage({
+        content: response.message,
+        conversationId,
+        role: 'assistant',
+        userId: user.id,
+      });
+      const finalMessages = [...persistedUserMessages, savedAssistantMessage];
 
-      updateConversationMessages(conversationId, [
-        ...nextMessages,
-        {
-          content: response.message,
-          id: createMessageId('assistant'),
-          role: 'assistant',
-        },
-      ]);
+      updateConversationMessages(conversationId, finalMessages);
+      updateRemoteConversationTitle(conversationId, getConversationTitle(finalMessages)).catch(() => {
+        setError(aiChatContent.errors.save);
+      });
     } catch (sendError) {
       setError(sendError instanceof Error ? sendError.message : aiChatContent.errors.send);
       updateConversationMessages(
@@ -222,13 +241,21 @@ export function AIChatFab({ scores }: AIChatFabProps) {
     }
   };
 
-  const startNewChat = () => {
-    const nextConversation = createConversation(initialMessages);
+  const startNewChat = async () => {
+    if (!user?.id || isSending) {
+      return;
+    }
 
-    setDraft('');
-    setError(null);
-    setActiveConversationId(nextConversation.id);
-    setConversations((current) => [nextConversation, ...current]);
+    try {
+      const nextConversation = await createRemoteConversation(user.id, initialMessages);
+
+      setDraft('');
+      setError(null);
+      setActiveConversationId(nextConversation.id);
+      setConversations((current) => sortConversations([nextConversation, ...current]));
+    } catch (createError) {
+      setError(createError instanceof Error ? createError.message : aiChatContent.errors.save);
+    }
   };
 
   const selectConversation = (conversationId: string) => {
@@ -544,6 +571,14 @@ function createMessageId(prefix: string) {
   return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2)}`;
 }
 
+function createLocalMessage(content: string, role: AIChatMessage['role']): AIChatMessage {
+  return {
+    content,
+    id: createMessageId(role),
+    role,
+  };
+}
+
 function wait(durationMs: number) {
   return new Promise((resolve) => {
     setTimeout(resolve, durationMs);
@@ -565,6 +600,162 @@ function createConversation(
   };
 }
 
+async function createRemoteConversation(
+  userId: string,
+  initialMessages: AIChatMessage[],
+): Promise<AIChatConversation> {
+  const client = getSupabaseClient();
+  const sessionUserId = await getCurrentSupabaseUserId();
+
+  if (sessionUserId !== userId) {
+    throw new Error('Phiên đăng nhập không khớp. Hãy đăng nhập lại rồi thử tiếp.');
+  }
+
+  const title = getConversationTitle(initialMessages);
+  const { data, error } = await client
+    .from('ai_chat_conversations')
+    .insert({
+      title,
+      user_id: userId,
+    })
+    .select('id, user_id, title, created_at, updated_at')
+    .single<ConversationRow>();
+
+  if (error) {
+    throw new Error(`Không tạo được đoạn chat: ${error.message}`);
+  }
+
+  return mapConversationRow(data, []);
+}
+
+async function insertRemoteMessage({
+  content,
+  conversationId,
+  role,
+  userId,
+}: {
+  content: string;
+  conversationId: string;
+  role: AIChatMessage['role'];
+  userId: string;
+}): Promise<AIChatMessage> {
+  const client = getSupabaseClient();
+  const sessionUserId = await getCurrentSupabaseUserId();
+
+  if (sessionUserId !== userId) {
+    throw new Error('Phiên đăng nhập không khớp. Hãy đăng nhập lại rồi thử tiếp.');
+  }
+
+  const { data, error } = await client
+    .from('ai_chat_messages')
+    .insert({
+      content,
+      conversation_id: conversationId,
+      role,
+      user_id: userId,
+    })
+    .select('id, user_id, conversation_id, role, content, created_at')
+    .single<MessageRow>();
+
+  if (error) {
+    throw new Error(`Không lưu được tin nhắn: ${error.message}`);
+  }
+
+  return mapMessageRow(data);
+}
+
+async function getCurrentSupabaseUserId(): Promise<string> {
+  const client = getSupabaseClient();
+  const {
+    data: { session },
+    error,
+  } = await client.auth.getSession();
+
+  if (error || !session?.user?.id) {
+    throw new Error('Không tìm thấy phiên đăng nhập. Hãy đăng nhập lại rồi thử tiếp.');
+  }
+
+  return session.user.id;
+}
+
+async function updateRemoteConversationTitle(conversationId: string, title: string) {
+  const client = getSupabaseClient();
+  const { error } = await client
+    .from('ai_chat_conversations')
+    .update({
+      title,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', conversationId);
+
+  if (error) {
+    throw new Error(`Không cập nhật được đoạn chat: ${error.message}`);
+  }
+}
+
+async function loadRemoteConversations(userId: string): Promise<AIChatConversation[]> {
+  const client = getSupabaseClient();
+  const { data: conversationRows, error: conversationError } = await client
+    .from('ai_chat_conversations')
+    .select('id, user_id, title, created_at, updated_at')
+    .eq('user_id', userId)
+    .order('updated_at', { ascending: false });
+
+  if (conversationError) {
+    throw new Error(`Không đọc được đoạn chat: ${conversationError.message}`);
+  }
+
+  if (!conversationRows || conversationRows.length === 0) {
+    return [];
+  }
+
+  const conversationIds = conversationRows.map((conversation) => conversation.id);
+  const { data: messageRows, error: messageError } = await client
+    .from('ai_chat_messages')
+    .select('id, user_id, conversation_id, role, content, created_at')
+    .in('conversation_id', conversationIds)
+    .order('created_at', { ascending: true });
+
+  if (messageError) {
+    throw new Error(`Không đọc được tin nhắn: ${messageError.message}`);
+  }
+
+  const messagesByConversation = new Map<string, AIChatMessage[]>();
+
+  for (const message of messageRows ?? []) {
+    const currentMessages = messagesByConversation.get(message.conversation_id) ?? [];
+    currentMessages.push(mapMessageRow(message));
+    messagesByConversation.set(message.conversation_id, currentMessages);
+  }
+
+  return sortConversations(
+    conversationRows.map((conversation) =>
+      mapConversationRow(conversation, messagesByConversation.get(conversation.id) ?? []),
+    ),
+  );
+}
+
+function mapConversationRow(
+  row: ConversationRow,
+  messages: AIChatMessage[],
+): AIChatConversation {
+  return {
+    createdAt: Date.parse(row.created_at),
+    id: row.id,
+    messages,
+    title: row.title || aiChatContent.header.untitledChat,
+    updatedAt: Date.parse(row.updated_at),
+  };
+}
+
+function mapMessageRow(row: MessageRow): AIChatMessage {
+  return {
+    content: row.content,
+    id: row.id,
+    role: row.role,
+  };
+}
+
 function getConversationTitle(messages: AIChatMessage[]) {
   const firstUserMessage = messages.find((message) => message.role === 'user')?.content.trim();
 
@@ -575,34 +766,6 @@ function getConversationTitle(messages: AIChatMessage[]) {
   return firstUserMessage.length > 28
     ? `${firstUserMessage.slice(0, 28).trim()}...`
     : firstUserMessage;
-}
-
-function isMessageList(value: unknown): value is AIChatMessage[] {
-  return (
-    Array.isArray(value) &&
-    value.every(
-      (message) =>
-        message &&
-        typeof message.id === 'string' &&
-        typeof message.content === 'string' &&
-        (message.role === 'assistant' || message.role === 'user'),
-    )
-  );
-}
-
-function isConversationList(value: unknown): value is AIChatConversation[] {
-  return (
-    Array.isArray(value) &&
-    value.every(
-      (conversation) =>
-        conversation &&
-        typeof conversation.id === 'string' &&
-        typeof conversation.title === 'string' &&
-        typeof conversation.createdAt === 'number' &&
-        typeof conversation.updatedAt === 'number' &&
-        isMessageList(conversation.messages),
-    )
-  );
 }
 
 function sortConversations(conversations: AIChatConversation[]) {
@@ -629,7 +792,7 @@ function sortConversations(conversations: AIChatConversation[]) {
     backgroundColor: colors.teal,
     borderColor: colors.borderStrong,
     borderWidth: 1.5,
-    borderRadius: 6,
+    borderRadius: 20,
     height: 40,
     justifyContent: 'center',
     width: 40,
