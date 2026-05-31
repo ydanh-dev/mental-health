@@ -109,7 +109,7 @@ export function HomeScreen() {
               pressed && styles.profileMenuActionPressed,
             ]}
           >
-            <Text style={styles.profileMenuActionText}>Đăng xuất khỏi thiết bị này</Text>
+            <Text style={styles.profileMenuActionText}>Rời khỏi thiết bị này</Text>
             <Text style={styles.profileMenuActionArrow}>→</Text>
           </Pressable>
         </View>

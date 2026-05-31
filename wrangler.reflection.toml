@@ -1,0 +1,12 @@
+name = "mental-health-reflection-dev"
+main = "workers/gemini-reflection-worker.js"
+compatibility_date = "2026-05-30"
+
+[vars]
+GEMINI_MODEL = "gemini-2.5-flash"
+
+[observability]
+enabled = true
+
+[secrets]
+required = ["GEMINI_API_KEY"]

@@ -1,9 +1,3 @@
-import http from 'node:http';
-
-const port = Number(process.env.PORT ?? 8787);
-const apiKey = process.env.GEMINI_API_KEY;
-const model = process.env.GEMINI_MODEL ?? 'gemini-2.5-flash';
-
 const responseSchema = {
   type: 'object',
   properties: {
@@ -36,49 +30,45 @@ const chatResponseSchema = {
   required: ['message', 'refused'],
 };
 
-const server = http.createServer(async (request, response) => {
-  response.setHeader('Access-Control-Allow-Origin', '*');
-  response.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-  response.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+export default {
+  async fetch(request, env) {
+    const url = new URL(request.url);
 
-  if (request.method === 'OPTIONS') {
-    response.writeHead(204);
-    response.end();
-    return;
-  }
+    if (request.method === 'OPTIONS') {
+      return new Response(null, {
+        headers: corsHeaders(),
+        status: 204,
+      });
+    }
 
-  if (request.method !== 'POST' || !['/reflect', '/chat'].includes(request.url ?? '')) {
-    sendJson(response, 404, { error: 'Not found' });
-    return;
-  }
+    if (request.method !== 'POST' || !['/reflect', '/chat'].includes(url.pathname)) {
+      return json({ error: 'Not found' }, 404);
+    }
 
-  if (!apiKey) {
-    sendJson(response, 500, { error: 'Missing GEMINI_API_KEY' });
-    return;
-  }
+    if (!env.GEMINI_API_KEY) {
+      return json({ error: 'Missing GEMINI_API_KEY' }, 500);
+    }
 
-  try {
-    const input = JSON.parse(await readBody(request));
-    const result =
-      request.url === '/chat'
-        ? await requestChatResponse(input)
-        : await requestReflectionResponse(input);
+    try {
+      const input = await request.json();
+      const result =
+        url.pathname === '/chat'
+          ? await requestChatResponse(input, env)
+          : await requestReflectionResponse(input, env);
 
-    sendJson(response, 200, result);
-  } catch (error) {
-    sendJson(response, error instanceof GeminiProxyError ? 502 : 500, {
-      error: error instanceof Error ? error.message : 'Unexpected error',
-    });
-  }
-});
+      return json(result);
+    } catch (error) {
+      return json(
+        { error: error instanceof Error ? error.message : 'Unexpected error' },
+        error instanceof GeminiProxyError ? 502 : 500,
+      );
+    }
+  },
+};
 
-server.listen(port, () => {
-  console.log(`Gemini reflection proxy listening on http://localhost:${port}/reflect`);
-  console.log(`Gemini chat proxy listening on http://localhost:${port}/chat`);
-});
-
-async function requestReflectionResponse(input) {
+async function requestReflectionResponse(input, env) {
   return requestGeminiJson({
+    env,
     prompt: buildPrompt(input),
     responseSchema,
     systemInstruction:
@@ -87,7 +77,7 @@ async function requestReflectionResponse(input) {
   });
 }
 
-async function requestChatResponse(input) {
+async function requestChatResponse(input, env) {
   const outOfScopeResponse = getOutOfScopeResponse(input);
 
   if (outOfScopeResponse) {
@@ -95,6 +85,7 @@ async function requestChatResponse(input) {
   }
 
   return requestGeminiJson({
+    env,
     prompt: buildChatPrompt(input),
     responseSchema: chatResponseSchema,
     systemInstruction:
@@ -143,7 +134,8 @@ function normalizeText(value) {
     .toLowerCase();
 }
 
-async function requestGeminiJson({ prompt, responseSchema, systemInstruction, temperature }) {
+async function requestGeminiJson({ env, prompt, responseSchema, systemInstruction, temperature }) {
+  const model = env.GEMINI_MODEL || 'gemini-2.5-flash';
   const aiResponse = await fetch(
     `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
     {
@@ -165,7 +157,7 @@ async function requestGeminiJson({ prompt, responseSchema, systemInstruction, te
       }),
       headers: {
         'Content-Type': 'application/json',
-        'x-goog-api-key': apiKey,
+        'x-goog-api-key': env.GEMINI_API_KEY,
       },
       method: 'POST',
     },
@@ -226,18 +218,20 @@ Hãy trả về JSON:
 `.trim();
 }
 
-function readBody(request) {
-  return new Promise((resolve, reject) => {
-    let body = '';
-    request.on('data', (chunk) => {
-      body += chunk;
-    });
-    request.on('end', () => resolve(body));
-    request.on('error', reject);
+function json(data, status = 200) {
+  return new Response(JSON.stringify(data), {
+    headers: {
+      ...corsHeaders(),
+      'Content-Type': 'application/json; charset=utf-8',
+    },
+    status,
   });
 }
 
-function sendJson(response, status, data) {
-  response.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8' });
-  response.end(JSON.stringify(data));
+function corsHeaders() {
+  return {
+    'Access-Control-Allow-Headers': 'Content-Type',
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+    'Access-Control-Allow-Origin': '*',
+  };
 }

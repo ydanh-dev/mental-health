@@ -122,7 +122,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     setError(null);
 
     if (Platform.OS !== 'ios') {
-      setError('Đăng nhập Apple chỉ khả dụng trên iOS.');
+      setError('Apple chỉ khả dụng trên iOS.');
       return;
     }
 

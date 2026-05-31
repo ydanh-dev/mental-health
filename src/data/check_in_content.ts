@@ -1,26 +1,26 @@
 export const checkInContent = {
-  eyebrow: 'Phản chiếu',
-  title: 'Chạm vào tín hiệu. Rồi hãy nhẹ nhàng gỡ nó ra.',
+  eyebrow: 'Nhìn lại',
+  title: 'Dừng lại một chút. Xem trong lòng đang có gì.',
   description:
-    'Không cần gọi tên cảm xúc ngay. Bắt đầu bằng những dấu hiệu nhỏ từ cơ thể, tâm trí, hành vi và bối cảnh.',
+    'Không cần gọi tên chính xác. Cứ chọn thứ gần nhất với lúc này.',
   modes: [
     {
-      label: 'Check-in',
-      description: 'Chọn hình, màu, từ hoặc một dấu hiệu gần nhất với lúc này.',
+      label: 'Lắng nghe',
+      description: 'Chọn thứ gần nhất với cảm giác của bạn lúc này.',
     },
     {
-      label: 'Giải tỏa',
-      description: 'Chọn một hành động rất nhỏ để cơ thể mềm xuống một chút.',
+      label: 'Thở',
+      description: 'Một hành động rất nhỏ để cơ thể bớt căng một chút.',
     },
     {
-      label: 'Phản chiếu',
-      description: 'Gom các tín hiệu thành một câu nhẹ nhàng, không kết luận thay bạn.',
+      label: 'Nhìn lại',
+      description: 'Gom những gì đang có trong lòng thành một câu - không kết luận thay bạn.',
     },
   ],
   sections: [
     {
       label: 'Cơ thể',
-      prompt: 'Cơ thể đang gửi tín hiệu gì?',
+      prompt: 'Cơ thể đang có cảm giác gì?',
       signals: ['Căng cơ', 'Nặng ngực', 'Bồn chồn', 'Mỏi mắt'],
     },
     {
@@ -67,32 +67,32 @@ export const checkInContent = {
     },
     bodyCare: {
       title: 'Xử lý phần cơ thể',
-      body: 'Đổi tư thế, uống nước, thả lỏng vùng đang căng, hoặc đi vài bước ngắn để cơ thể bớt bị kẹt.',
+      body: 'Đổi tư thế, thả lỏng vùng đang căng, hoặc đi vài bước ngắn để cơ thể bớt bị kẹt.',
       nextQuestion: 'Vùng nào trên cơ thể đang cần được chăm sóc trước?',
     },
   },
-  reflectionPrompt: 'Nếu phản chiếu lại thật nhẹ: điều gì đang có mặt?',
+  reflectionPrompt: 'Nếu nhìn lại thật nhẹ: điều gì đang có mặt?',
   softQuestion: 'Năm phút tới có thể nhẹ hơn 5% bằng cách nào?',
   safetyNote:
-    'Phần này dùng để tự nhận biết và neo lại. Nó không chẩn đoán và không thay thế hỗ trợ chuyên môn.',
+    'Phần này giúp bạn nhận ra mình đang ở đâu - không chẩn đoán, không kết luận.',
   primaryAction: 'Chọn một bước nhỏ',
 } as const;
 
 export const conceptContent = {
   title: 'Cách app đọc cảm xúc',
   description:
-    'Không kết luận từ một câu trả lời. App nên gom nhiều tín hiệu cùng chiều, rồi phản chiếu lại bằng ngôn ngữ nhẹ.',
+    'Không kết luận từ một câu trả lời. App nên nhìn nhiều cảm giác cùng chiều, rồi viết lại bằng ngôn ngữ nhẹ.',
   productLayers: [
     {
       label: 'Tầng 1',
       title: 'Điểm vào',
       tone: 'Hôm nay bạn đang thế nào?',
-      items: ['Quick check-in', 'Viết / nói tự do', 'Body scan'],
+      items: ['Hôm nay', 'Viết / nói tự do', 'Cơ thể'],
     },
     {
       label: 'Tầng 2',
-      title: 'Nhận diện',
-      tone: 'Đọc pattern, không chẩn đoán',
+      title: 'Hôm nay',
+      tone: 'Đọc nhịp cảm xúc, không gắn nhãn',
       items: ['Pattern theo thời điểm', 'Mức độ & tông màu', 'Trigger mapping'],
     },
     {
@@ -120,6 +120,6 @@ export const conceptContent = {
       detail: 'Thứ mấy, deadline, thời tiết, lịch sử riêng của người dùng.',
     },
   ],
-  inference: 'Cần ít nhất 3 tín hiệu cùng chiều trước khi đưa ra một phản chiếu.',
-  output: 'Có vẻ gần đây bạn đang chịu nhiều áp lực hơn thường lệ.',
+  inference: 'Cần ít nhất 3 cảm giác cùng chiều trước khi viết lại một câu nhìn lại.',
+  output: 'Có vẻ gần đây bạn đang mang nhiều thứ hơn bình thường.',
 } as const;

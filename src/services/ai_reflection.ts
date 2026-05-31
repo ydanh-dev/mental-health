@@ -12,8 +12,6 @@ export type AIReflectionRequest = {
 export type AIReflectionResponse = {
   followUpQuestion: string;
   reflection: string;
-  riskLevel: 'low' | 'medium' | 'high' | 'crisis';
-  safetyMessage?: string;
   supportActions: Array<{
     body: string;
     nextQuestion: string;
@@ -79,7 +77,6 @@ function isAIReflectionResponse(value: unknown): value is AIReflectionResponse {
   return (
     typeof candidate.reflection === 'string' &&
     typeof candidate.followUpQuestion === 'string' &&
-    ['low', 'medium', 'high', 'crisis'].includes(candidate.riskLevel) &&
     Array.isArray(candidate.supportActions) &&
     candidate.supportActions.every(
       (action) =>

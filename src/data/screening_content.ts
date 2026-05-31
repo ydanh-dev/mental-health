@@ -1,23 +1,18 @@
 export const screeningContent = {
   intro: {
-    title: "Hôm nay bạn đang thế nào?",
+    title: 'Hôm nay bạn đang thế nào?',
     description:
-      "Không có câu trả lời đúng hay sai. Cứ chọn thứ gần nhất với cảm giác của bạn lúc này.",
+      'Không có câu trả lời đúng hay sai. Cứ chọn thứ gần nhất với cảm giác của bạn lúc này.',
   },
   progress: {
-    done: "Đã đủ tín hiệu",
-    lowWellbeing: "Mình sẽ hỏi thêm vài câu để hiểu rõ hơn.",
-    stableWellbeing:
-      "Có vẻ bạn vẫn còn điểm tựa. Mình sẽ chuyển sang lắng nghe thêm.",
+    done: 'Xong rồi',
+    lowWellbeing: 'Mình sẽ hỏi thêm vài câu nữa. Cứ chọn thứ gần nhất với lúc này.',
+    stableWellbeing: 'Có vẻ bạn vẫn còn điểm tựa. Mình sẽ lắng nghe thêm.',
   },
   completion: {
-    title: "Mình đã có đủ tín hiệu để trò chuyện tiếp.",
-    body: "Bạn có thể mở AI ở góc dưới để kể thêm. Mình sẽ dùng phần check-in này làm ngữ cảnh, không đọc điểm số ra thành nhãn.",
-    action: "Làm lại check-in",
+    title: 'Mình đã hiểu hơn một chút rồi.',
+    body: 'Mở chat ở góc dưới để kể tiếp nhé. Mình sẽ dùng phần vừa rồi làm ngữ cảnh - không đọc con số ra thành nhãn.',
+    action: 'Bắt đầu lại',
   },
-  crisis: {
-    body: "Nếu bạn cần hỗ trợ, hãy nhắn tin trực tiếp với chatbot của chúng tôi ở góc dưới màn hình nhé.",
-    action: "Chat ngay",
-  },
-  typingLabel: "AI đang gõ",
+  typingLabel: 'AI đang gõ',
 } as const;

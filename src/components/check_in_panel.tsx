@@ -81,10 +81,10 @@ export function CheckInPanel() {
     }
 
     if (!hasJournalText) {
-      return `Có vài tín hiệu đang hiện lên: ${selectedSummary}. Thêm một câu tự do sẽ giúp phản chiếu gần với bạn hơn.`;
+      return `Có vài cảm giác đang hiện lên: ${selectedSummary}. Thêm một câu tự do sẽ giúp phần nhìn lại gần với bạn hơn.`;
     }
 
-    return aiReflection?.reflection ?? `Có vẻ lúc này cơ thể đang nghiêng về "${bodySignal}", tâm trí có "${mindSignal}", cảm xúc gần với "${feelingSignal}", và bạn đang cần "${needSignal}". Câu bạn viết cho thấy trải nghiệm này có sắc thái riêng, nên mình chỉ phản chiếu nhẹ: có điều gì đó đang cần được nhìn thấy, không cần giải quyết hết ngay.`;
+    return aiReflection?.reflection ?? `Có vẻ lúc này cơ thể đang nghiêng về "${bodySignal}", tâm trí có "${mindSignal}", cảm xúc gần với "${feelingSignal}", và bạn đang cần "${needSignal}". Câu bạn viết cho thấy trải nghiệm này có sắc thái riêng, nên mình chỉ nhìn lại thật nhẹ: có điều gì đó đang cần được nhìn thấy, không cần giải quyết hết ngay.`;
   }, [
     aiReflection,
     bodySignal,
@@ -131,7 +131,7 @@ export function CheckInPanel() {
       });
       setAIReflection(result);
     } catch (error) {
-      setAIError(error instanceof Error ? error.message : 'Không tạo được phản chiếu AI.');
+      setAIError(error instanceof Error ? error.message : 'Không tạo được phần nhìn lại AI.');
     } finally {
       setIsLoadingAI(false);
     }
@@ -217,9 +217,9 @@ export function CheckInPanel() {
       {hasJournalText && (
         <FadeInDownView distance={10} duration={420}>
           <View style={styles.aiCard}>
-            <Text style={styles.aiTitle}>Tạo phản chiếu bằng AI</Text>
+            <Text style={styles.aiTitle}>Tạo phần nhìn lại bằng AI</Text>
             <Text style={styles.aiDescription}>
-              AI sẽ dùng các tín hiệu bạn chọn và câu bạn viết để gợi ý hướng xử lý cụ thể hơn.
+              AI sẽ dùng các cảm giác bạn chọn và câu bạn viết để gợi ý hướng xử lý cụ thể hơn.
             </Text>
             <Pressable
               disabled={isLoadingAI}
@@ -231,13 +231,10 @@ export function CheckInPanel() {
               ]}
             >
               <Text style={styles.aiButtonText}>
-                {isLoadingAI ? 'Đang phản chiếu...' : 'Tạo phản chiếu AI'}
+                {isLoadingAI ? 'Đang nhìn lại...' : 'Tạo nhìn lại AI'}
               </Text>
             </Pressable>
             {aiError && <Text style={styles.aiError}>{aiError}</Text>}
-            {aiReflection?.riskLevel === 'crisis' && aiReflection.safetyMessage && (
-              <Text style={styles.crisisText}>{aiReflection.safetyMessage}</Text>
-            )}
           </View>
         </FadeInDownView>
       )}
@@ -392,12 +389,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '800',
     letterSpacing: 0,
-  },
-  crisisText: {
-    color: colors.clay,
-    fontSize: 14,
-    fontWeight: '700',
-    lineHeight: 21,
   },
   disabledButton: {
     opacity: 0.7,

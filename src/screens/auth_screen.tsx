@@ -61,7 +61,7 @@ export function AuthScreen() {
             <View style={styles.configBox}>
               <Text style={styles.configTitle}>Chưa cấu hình Supabase</Text>
               <Text style={styles.configText}>
-                Thêm `EXPO_PUBLIC_SUPABASE_URL` và `EXPO_PUBLIC_SUPABASE_ANON_KEY` vào `.env` để đăng nhập.
+                Thêm `EXPO_PUBLIC_SUPABASE_URL` và `EXPO_PUBLIC_SUPABASE_ANON_KEY` vào `.env` để tiếp tục.
               </Text>
             </View>
           )}
@@ -69,7 +69,7 @@ export function AuthScreen() {
           {isAppleAvailable && (
             <Pressable
               accessibilityRole="button"
-              accessibilityLabel="Đăng nhập bằng Apple"
+              accessibilityLabel="Tiếp tục với Apple"
               disabled={!isConfigured || isLoading}
               onPress={signInWithApple}
               style={({ pressed }) => [
@@ -82,14 +82,14 @@ export function AuthScreen() {
                 <View style={styles.appleLogoBox}>
                   <Text style={styles.appleLogoIcon}></Text>
                 </View>
-                <Text style={styles.oauthText}>Đăng nhập với Apple</Text>
+                <Text style={styles.oauthText}>Tiếp tục với Apple</Text>
               </View>
             </Pressable>
           )}
 
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel="Đăng nhập bằng Google"
+            accessibilityLabel="Tiếp tục với Google"
             disabled={!isConfigured || isLoading}
             onPress={signInWithGoogle}
             style={({ pressed }) => [

@@ -35,7 +35,7 @@
     "development": {
       "environment": "development",
       "channel": "development",
-      "developmentClient": true,
+      "developmentClient": false,
       "distribution": "store",
       "autoIncrement": true,
       "env": {

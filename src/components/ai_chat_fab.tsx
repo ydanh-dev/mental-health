@@ -201,15 +201,11 @@ export function AIChatFab({ scores }: AIChatFabProps) {
         requestAIChat(nextMessages, scores),
         wait(minimumAssistantDelayMs),
       ]);
-      const responseText =
-        response.riskLevel === 'crisis' && response.safetyMessage
-          ? `${response.message}\n\n${response.safetyMessage}`
-          : response.message;
 
       updateConversationMessages(conversationId, [
         ...nextMessages,
         {
-          content: responseText,
+          content: response.message,
           id: createMessageId('assistant'),
           role: 'assistant',
         },

@@ -22,7 +22,7 @@ export const aiChatContent = {
     eyebrow: "Bạn đồng hành AI",
     title: "Trò chuyện",
     savedStatus: "Đã lưu trên thiết bị",
-    emptyStatus: "Chỉ trả lời về cảm xúc",
+    emptyStatus: "Ở đây để lắng nghe bạn",
     newChat: "Đoạn chat mới",
     chatListLabel: "Các đoạn chat",
     untitledChat: "Đoạn chat mới",
@@ -48,24 +48,20 @@ export function buildInitialAIChatMessages(
 
 function buildInitialAIChatMessage(scores?: ScoreResult | null) {
   if (!scores) {
-    return "Mình ở đây để cùng bạn gỡ cảm xúc thành từng bước nhỏ. Sau khi hoàn thành check-in, mình sẽ hiểu ngữ cảnh của bạn rõ hơn.";
-  }
-
-  if (scores.isCrisis) {
-    return "Mình thấy phần check-in vừa rồi có tín hiệu cần ưu tiên sự an toàn của bạn. Trước khi nói sâu hơn, lúc này bạn có đang ở nơi an toàn không?";
+    return "Mình ở đây để lắng nghe. Khi bạn hoàn thành phần câu hỏi, mình sẽ hiểu hơn để đi cùng bạn.";
   }
 
   if (scores.needsDeepScreen) {
     const mixedPattern = scores.phq9 > 9 && scores.gad7 > 9;
 
     return mixedPattern
-      ? "Mình đã đọc phần check-in vừa rồi. Có vẻ gần đây bạn vừa xuống năng lượng, vừa phải giữ khá nhiều lo lắng cùng lúc. Nếu muốn, mình có thể cùng bạn gỡ phần đang nặng nhất trước."
-      : "Mình đã đọc phần check-in vừa rồi. Có vẻ trạng thái gần đây đang thấp hơn bình thường, nên mình sẽ đi chậm và phản chiếu từng phần cùng bạn.";
+      ? "Mình đã đọc phần vừa rồi. Có vẻ gần đây bạn đang vừa mệt, vừa phải giữ nhiều thứ cùng lúc. Cứ kể thứ nào đang nặng nhất - không cần theo thứ tự gì cả."
+      : "Mình đã đọc phần vừa rồi. Gần đây có vẻ bạn đang không được nhẹ lắm. Mình sẽ đi chậm cùng bạn - không vội đâu.";
   }
 
   if (scores.who5_pct <= 72) {
-    return "Mình đã đọc phần check-in vừa rồi. Có vẻ bạn vẫn còn vài điểm tựa, nhưng cũng có điều gì đó đang cần được lắng nghe thêm.";
+    return "Mình đã đọc phần vừa rồi. Có vẻ bạn vẫn còn điểm tựa, nhưng hôm nay cũng có điều gì đó đang muốn được nói ra. Cứ bắt đầu từ thứ đang nổi lên nhất.";
   }
 
-  return "Mình đã đọc phần check-in vừa rồi. Có vẻ nền tảng hiện tại của bạn tương đối ổn, mình có thể lắng nghe thêm điều khiến bạn muốn mở cuộc trò chuyện này.";
+  return "Mình đã đọc phần vừa rồi. Nhìn chung bạn đang ổn - nhưng hẳn có lý do để mở cuộc trò chuyện này. Điều gì đang có trong đầu bạn lúc này?";
 }

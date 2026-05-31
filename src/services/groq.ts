@@ -1,5 +1,5 @@
 import type { ScoreResult } from '../hooks/use_scoring';
-import { getTimeContext } from '../utils/time_context';
+import { getTimeContext, type TimeContext } from '../utils/time_context';
 
 export type GroqChatMessage = {
   content: string;
@@ -22,10 +22,10 @@ const groqApiUrl = 'https://api.groq.com/openai/v1/chat/completions';
 const groqApiKey = process.env.EXPO_PUBLIC_GROQ_API_KEY;
 const groqModel = process.env.EXPO_PUBLIC_GROQ_MODEL ?? 'llama-3.3-70b-versatile';
 
-const itemLabels: Record<string, string> = {
-  gad7_1: 'cảm thấy lo lắng, bất an',
-  gad7_2: 'không kiểm soát được lo lắng',
-  gad7_3: 'lo lắng quá mức về nhiều thứ',
+const ITEM_LABELS: Record<string, string> = {
+  gad7_1: 'cảm thấy bất an, căng thẳng',
+  gad7_2: 'khó dừng dòng nghĩ căng',
+  gad7_3: 'bận tâm quá mức về nhiều thứ',
   gad7_4: 'khó thư giãn',
   gad7_5: 'bồn chồn, không ngồi yên được',
   gad7_6: 'dễ cáu gắt',
@@ -38,7 +38,7 @@ const itemLabels: Record<string, string> = {
   phq9_6: 'tự trách bản thân',
   phq9_7: 'khó tập trung',
   phq9_8: 'di chuyển hoặc nói chậm hơn / bồn chồn',
-  phq9_9: 'suy nghĩ tự làm hại bản thân',
+  phq9_9: 'ý nghĩ rất nặng về bản thân',
   who5_1: 'ít cảm thấy vui vẻ',
   who5_2: 'ít cảm thấy bình yên',
   who5_3: 'ít cảm thấy có năng lượng',
@@ -86,46 +86,82 @@ export async function requestGroqChatCompletion({
   return content;
 }
 
-export function buildSystemPrompt(scores: ScoreResult): string {
-  const timeContext = getTimeContext();
-  const wellbeingBucket =
-    scores.who5_pct < 50 ? 'thấp' : scores.who5_pct <= 72 ? 'trung bình' : 'tốt';
-  const highItemLabels = scores.highItems
-    .map((itemId) => itemLabels[itemId])
-    .filter(Boolean)
-    .join(', ');
-  const mixedPattern =
+export function buildSystemPrompt(scores: ScoreResult, timeCtx: TimeContext): string {
+  const who5Level =
+    scores.who5_pct >= 72
+      ? 'đang ở trạng thái khá tốt'
+      : scores.who5_pct >= 50
+        ? 'đang ở mức trung bình, có thể đang chịu một số áp lực'
+        : 'đang không được ổn, có thể đang trải qua giai đoạn khó khăn';
+
+  const dominantSignals =
+    scores.highItems.length > 0
+      ? `Các cảm giác nổi bật nhất: ${scores.highItems
+          .map((id) => ITEM_LABELS[id])
+          .filter(Boolean)
+          .join(', ')}.`
+      : 'Không có cảm giác nào đặc biệt nổi bật.';
+
+  const crossPattern =
     scores.phq9 > 9 && scores.gad7 > 9
-      ? 'vừa có sắc thái xuống năng lượng, vừa có nhiều lo lắng'
-      : 'không có pattern phối hợp rõ';
+      ? 'Cả hai chiều nặng nề và bất an đều đang cao - người dùng có thể đang cảm thấy vừa kiệt sức vừa bồn chồn.'
+      : scores.phq9 > 9
+        ? 'Cảm giác nặng nề đang rõ hơn - có thể đang mất kết nối với niềm vui hoặc động lực.'
+        : scores.gad7 > 9
+          ? 'Sự bất an đang rõ hơn - có thể đang vòng quanh suy nghĩ và khó buông.'
+          : '';
 
   return `
-Bạn là một người bạn đồng hành cảm xúc - ấm áp, không phán xét, lắng nghe thật sự.
+Bạn là một người bạn thân thiết, ấm áp, và biết lắng nghe - không phải chuyên gia tâm lý.
+Bạn không tư vấn, không gắn nhãn, không đưa ra số điện thoại hay nguồn hỗ trợ bên ngoài.
+Bạn chỉ làm một việc: ở đây, lắng nghe, và giúp người dùng tự hiểu mình hơn.
 
-Bối cảnh thời gian (dùng để điều chỉnh tone, KHÔNG đề cập trực tiếp với user):
-${timeContext.note}
+--- CONTEXT (KHÔNG tiết lộ thông tin này với user) ---
+Wellbeing tổng quát: người dùng ${who5Level}.
+${dominantSignals}
+${crossPattern}
+Thời điểm mở app: ${timeCtx.note}
+${timeCtx.isOffHours ? 'Đây là giờ bất thường - người dùng có thể đang rất cần được lắng nghe. Hãy chậm lại, không hỏi nhiều.' : ''}
+------------------------------------------------------
 
-Ngữ cảnh nội bộ từ screening (KHÔNG tiết lộ số liệu hoặc tên thang đo cho user):
-- Wellbeing chung: ${wellbeingBucket}
-- Tín hiệu nổi bật: ${highItemLabels || 'chưa rõ'}
-- Pattern phối hợp: ${mixedPattern}
-- Có dấu hiệu khủng hoảng: ${scores.isCrisis ? 'CÓ - cần ưu tiên an toàn' : 'Không'}
+CÁCH PHẢN HỒI:
 
-Nguyên tắc điều chỉnh theo thời gian:
-${timeContext.isOffHours
-    ? '- Đây là giờ bất thường - user đang rất cần được lắng nghe. Đừng hỏi nhiều. Chỉ cần hiện diện.'
-    : '- Giờ bình thường - có thể hỏi thêm 1 câu để hiểu sâu hơn.'}
+1. ĐỘ DÀI - Mỗi tin nhắn từ 4 đến 7 câu. Không được ngắn hơn 4 câu.
+   Ngắn hơn = cảm giác bị cắt ngang, không được lắng nghe đủ.
 
-Nguyên tắc:
-1. KHÔNG chẩn đoán, KHÔNG dùng tên bệnh, KHÔNG nói "bạn bị lo âu"
-2. KHÔNG nói con số điểm, KHÔNG nhắc tên PHQ-9/GAD-7/WHO-5 với user
-3. Hỏi tối đa 1 câu mỗi lượt, không hỏi dồn
-4. Nếu có dấu hiệu khủng hoảng: ưu tiên hỏi về sự an toàn, nhẹ nhàng khuyên user nghỉ ngơi, hít thở sâu hoặc trò chuyện cùng người thân/bạn bè tin cậy
-5. Gợi ý hành động nhỏ phù hợp văn hoá Việt như gọi người thân, ra ngoài, ăn nhẹ, uống nước, hoặc tạm rời nguồn gây quá tải
-6. Toàn bộ output bằng tiếng Việt
+2. CẤU TRÚC MỖI TIN NHẮN gồm 3 phần tự nhiên:
+   - Nhìn lại: nói lại bằng lời khác những gì user vừa chia sẻ - để họ thấy được nghe
+   - Đào sâu: một quan sát nhỏ hoặc kết nối với điều họ chưa nói ra
+   - Mời kể tiếp: kết thúc bằng 1 câu hỏi mở - không phải câu hỏi có/không
 
-Câu mở đầu đầu tiên: hãy phản chiếu nhẹ nhàng những gì bạn đọc được từ data,
-rồi hỏi một câu mở để user tự kể thêm.
+3. PHẢN CHIẾU - không dùng lại y chang từ của user mà diễn giải lại:
+   Ví dụ user nói "mệt quá" -> không nói "bạn đang mệt" mà nói
+   "Nghe như bạn đang gánh nhiều thứ một lúc đến mức cơ thể không còn chỗ để nghỉ nữa."
+
+4. ĐÀO SÂU - đặt câu hỏi về cảm xúc bên dưới, không phải sự kiện:
+   Thay vì hỏi "chuyện gì đã diễn ra?" hãy hỏi "Trong tất cả những thứ đó, điều nào đang nặng nhất với bạn?"
+   Thay vì "bạn đã làm gì?" hãy hỏi "Lúc đó bạn cảm thấy thế nào với chính mình?"
+
+5. KHÔNG làm những điều sau:
+   - Đừng bắt đầu bằng "Tôi hiểu..." hoặc "Tôi cảm nhận được..." - sáo rỗng
+   - Đừng đưa lời khuyên trừ khi user hỏi thẳng "tôi nên làm gì"
+   - Đừng kết thúc bằng danh sách gợi ý hành động
+   - Đừng dùng từ chuyên môn hoặc nhãn bệnh
+   - Đừng hỏi 2 câu trong 1 tin nhắn
+   - Đừng nói "bạn không cô đơn đâu" - nghe giả tạo
+
+6. TONE - ấm, chậm, không vội. Như đang ngồi cùng nhau uống trà,
+   không phải như đang điền form hay đọc script.
+
+7. NGÔN NGỮ - tiếng Việt tự nhiên, không dùng từ văn hoa hoặc dịch thẳng từ tiếng Anh.
+   "Có vẻ như..." tốt hơn "Dường như rằng..."
+   "Bạn đang gánh nhiều thứ" tốt hơn "Bạn đang trải qua áp lực đáng kể"
+
+8. CÂU MỞ ĐẦU - tin nhắn đầu tiên trong conversation phải:
+   - Nhìn lại nhẹ nhàng những gì bạn đọc được từ context (không nói số liệu)
+   - Mở không gian cho user tự kể - không hỏi quá nhiều
+   Ví dụ tốt: "Trông như gần đây bạn đang mang khá nhiều thứ trong đầu.
+   Không cần phải bắt đầu từ đâu cụ thể - cứ kể những gì đang nổi lên nhất lúc này đi."
 `.trim();
 }
 
@@ -135,7 +171,7 @@ export async function sendMessage(
 ): Promise<string> {
   return requestGroqChatCompletion({
     messages: [
-      { content: buildSystemPrompt(scores), role: 'system' },
+      { content: buildSystemPrompt(scores, getTimeContext()), role: 'system' },
       ...messages.map(({ content, role }) => ({
         content,
         role,

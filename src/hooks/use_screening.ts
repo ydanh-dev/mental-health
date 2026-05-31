@@ -91,9 +91,7 @@ export function useScreening() {
         who5_percentage: scoreResult.who5_pct,
       };
       const needsDeepScreening = scoreResult.needsDeepScreen;
-      const isCrisis =
-        current.flags.isCrisis ||
-        (currentItem.question.crisis_trigger === true && scoreResult.isCrisis);
+      const isCrisis = scoreResult.isCrisis;
       const nextState: ScreeningState = {
         ...current,
         answers,

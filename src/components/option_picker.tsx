@@ -13,7 +13,7 @@ type OptionPickerProps = {
 export function OptionPicker({ disabled, onSelect, scale, selectedValue }: OptionPickerProps) {
   return (
     <View style={styles.optionWrap}>
-      <Text style={styles.helperText}>Chọn cảm giác của bạn bây giờ</Text>
+      <Text style={styles.helperText}>Cái nào gần nhất với lúc này?</Text>
       <View style={styles.optionColumn}>
         {scale.options.map((option, index) => {
           const selected = selectedValue === option.value;
