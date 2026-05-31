@@ -139,7 +139,14 @@ export function ScreeningScreen({ onComplete }: ScreeningScreenProps) {
                 Mở chat ở góc dưới để kể tiếp nhé. Mình đã hiểu ngữ cảnh - không cần giải thích lại từ đầu.
               </Text>
 
-              <Pressable accessibilityRole="button" onPress={restart} style={styles.restartButton}>
+              <Pressable
+                accessibilityRole="button"
+                onPress={restart}
+                style={({ pressed }) => [
+                  styles.restartButton,
+                  pressed && styles.restartButtonPressed,
+                ]}
+              >
                 <Text style={styles.restartText}>{screeningContent.completion.action}</Text>
               </Pressable>
             </View>
@@ -203,9 +210,8 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surfaceMuted,
     borderColor: colors.borderStrong,
     borderRadius: radius.lg,
-    borderWidth: 1,
+    borderWidth: 1.5,
     gap: spacing.lg,
-    maxHeight: 720,
     minHeight: 560,
     padding: spacing.lg,
   },
@@ -223,9 +229,15 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
     borderColor: colors.borderStrong,
     borderRadius: radius.md,
-    borderWidth: 1,
+    borderWidth: 1.5,
     gap: spacing.sm,
-    padding: spacing.md,
+    padding: spacing.lg,
+    shadowColor: colors.borderStrong,
+    shadowOffset: { width: 3, height: 3 },
+    shadowOpacity: 1,
+    shadowRadius: 0,
+    elevation: 3,
+    marginBottom: spacing.xs,
   },
   doneTitle: {
     color: colors.textPrimary,
@@ -290,18 +302,29 @@ const styles = StyleSheet.create({
   },
   restartButton: {
     alignSelf: 'flex-start',
-    backgroundColor: colors.primarySoft,
-    borderColor: colors.border,
-    borderRadius: radius.sm,
-    borderWidth: 1,
+    backgroundColor: colors.surface,
+    borderColor: colors.borderStrong,
+    borderRadius: 8,
+    borderWidth: 1.5,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
+    shadowColor: colors.borderStrong,
+    shadowOffset: { width: 2, height: 2 },
+    shadowOpacity: 1,
+    shadowRadius: 0,
+    elevation: 2,
+  },
+  restartButtonPressed: {
+    transform: [{ translateX: 1 }, { translateY: 1 }],
+    shadowOffset: { width: 1, height: 1 },
+    elevation: 1,
   },
   restartText: {
     color: colors.textPrimary,
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '900',
-    lineHeight: 17,
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
   },
   title: {
     color: colors.textPrimary,

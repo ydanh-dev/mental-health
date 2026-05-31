@@ -74,14 +74,14 @@ export const checkInContent = {
   reflectionPrompt: 'Nếu nhìn lại thật nhẹ: điều gì đang có mặt?',
   softQuestion: 'Năm phút tới có thể nhẹ hơn 5% bằng cách nào?',
   safetyNote:
-    'Phần này giúp bạn nhận ra mình đang ở đâu - không chẩn đoán, không kết luận.',
+    'Phần này giúp bạn nhận ra mình đang ở đâu - không gắn nhãn, không kết luận.',
   primaryAction: 'Chọn một bước nhỏ',
 } as const;
 
 export const conceptContent = {
-  title: 'Cách app đọc cảm xúc',
+  title: 'Cách Solen đọc cảm xúc',
   description:
-    'Không kết luận từ một câu trả lời. App nên nhìn nhiều cảm giác cùng chiều, rồi viết lại bằng ngôn ngữ nhẹ.',
+    'Không kết luận từ một câu trả lời. Solen nên nhìn nhiều cảm giác cùng chiều, rồi viết lại bằng ngôn ngữ nhẹ.',
   productLayers: [
     {
       label: 'Tầng 1',
@@ -105,7 +105,7 @@ export const conceptContent = {
   signalLayers: [
     {
       title: 'Hành vi',
-      detail: 'Giờ mở app, tần suất, tốc độ viết, độ dài nhật ký.',
+      detail: 'Giờ mở Solen, tần suất, tốc độ viết, độ dài nhật ký.',
     },
     {
       title: 'Ngôn ngữ',

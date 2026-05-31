@@ -1,5 +1,7 @@
 import type { ScoreResult } from "../hooks/use_scoring";
 import type { AIChatMessage } from "../services/ai_chat";
+import { describeOnboardingProfile } from "./onboarding_content";
+import type { OnboardingProfile } from "../types/onboarding";
 
 export const aiChatContent = {
   initialMessages: [
@@ -34,17 +36,23 @@ export const aiChatContent = {
 
 export function buildInitialAIChatMessages(
   scores?: ScoreResult | null,
+  onboardingProfile?: OnboardingProfile | null,
 ): AIChatMessage[] {
   return [
     {
-      content: buildInitialAIChatMessage(scores),
+      content: buildInitialAIChatMessage(scores, onboardingProfile),
       id: "welcome",
       role: "assistant",
     },
   ];
 }
 
-function buildInitialAIChatMessage(scores?: ScoreResult | null) {
+function buildInitialAIChatMessage(
+  scores?: ScoreResult | null,
+  onboardingProfile?: OnboardingProfile | null,
+) {
+  const hasOnboardingContext = Boolean(describeOnboardingProfile(onboardingProfile));
+
   if (!scores) {
     return "Mình ở đây để lắng nghe. Khi bạn hoàn thành phần câu hỏi, mình sẽ hiểu hơn để đi cùng bạn.";
   }
@@ -52,9 +60,13 @@ function buildInitialAIChatMessage(scores?: ScoreResult | null) {
   if (scores.needsDeepScreen) {
     const mixedPattern = scores.phq9 > 9 && scores.gad7 > 9;
 
+    const contextLine = hasOnboardingContext
+      ? "Mình cũng sẽ nhớ những điều bạn đã chọn lúc bắt đầu, để không hỏi lại quá nhiều."
+      : "";
+
     return mixedPattern
-      ? "Mình đã đọc phần vừa rồi. Có vẻ gần đây bạn đang vừa mệt, vừa phải giữ nhiều thứ cùng lúc. Cứ kể thứ nào đang nặng nhất - không cần theo thứ tự gì cả."
-      : "Mình đã đọc phần vừa rồi. Gần đây có vẻ bạn đang không được nhẹ lắm. Mình sẽ đi chậm cùng bạn - không vội đâu.";
+      ? `Mình đã đọc phần vừa rồi. Có vẻ gần đây bạn đang vừa mệt, vừa phải giữ nhiều thứ cùng lúc. ${contextLine} Cứ kể thứ nào đang nặng nhất - không cần theo thứ tự gì cả.`.replace(/\s+/g, " ").trim()
+      : `Mình đã đọc phần vừa rồi. Gần đây có vẻ bạn đang không được nhẹ lắm. ${contextLine} Mình sẽ đi chậm cùng bạn - không vội đâu.`.replace(/\s+/g, " ").trim();
   }
 
   if (scores.who5_pct <= 72) {

@@ -1,11 +1,18 @@
 import { useMemo, useState } from 'react';
-import { Platform, Pressable, SafeAreaView, ScrollView, StatusBar, StyleSheet, Text, View } from 'react-native';
+import { Alert, Platform, Pressable, SafeAreaView, ScrollView, StatusBar, StyleSheet, Text, View } from 'react-native';
 
 import { AIChatFab } from '../components/ai_chat_fab';
+import { CrisisSafetyBanner } from '../components/crisis_safety_banner';
 import { FadeInDownView } from '../components/fade_in_down_view';
+import { HistorySheet } from '../components/history_sheet';
+import { InsightCard } from '../components/insight_card';
+import { OnboardingScreen } from '../components/onboarding_screen';
 import { ScreeningScreen } from '../components/screening_screen';
 import { useAuth } from '../hooks/use_auth';
+import { useMoodHistory } from '../hooks/use_mood_history';
+import { useOnboardingProfile } from '../hooks/use_onboarding_profile';
 import type { ScoreResult } from '../hooks/use_scoring';
+import { moodHistoryContent } from '../data/mood_history_content';
 import { colors, spacing } from '../styles/theme';
 
 function getStringMetadataValue(value: unknown) {
@@ -14,8 +21,17 @@ function getStringMetadataValue(value: unknown) {
 
 export function HomeScreen() {
   const { signOut, user } = useAuth();
+  const { addEntry, clearAll, entries } = useMoodHistory();
+  const {
+    complete: completeOnboarding,
+    isLoaded: isOnboardingLoaded,
+    profile: onboardingProfile,
+    skip: skipOnboarding,
+  } = useOnboardingProfile(user?.id);
   const [scores, setScores] = useState<ScoreResult | null>(null);
+  const [isHistorySheetOpen, setIsHistorySheetOpen] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const [screeningResetKey, setScreeningResetKey] = useState(0);
 
   const displayName = useMemo(() => {
     if (!user) return '';
@@ -43,12 +59,65 @@ export function HomeScreen() {
     setIsProfileOpen(false);
     signOut();
   };
+  const handleScreeningComplete = (nextScores: ScoreResult | null) => {
+    setScores(nextScores);
+
+    if (nextScores) {
+      addEntry(nextScores).catch(() => undefined);
+    }
+  };
+  const confirmClearHistory = () => {
+    Alert.alert(
+      moodHistoryContent.clear.title,
+      moodHistoryContent.clear.message,
+      [
+        { style: 'cancel', text: moodHistoryContent.clear.cancel },
+        {
+          onPress: () => {
+            clearAll().catch(() => undefined);
+            setScores(null);
+            setIsHistorySheetOpen(false);
+            setIsProfileOpen(false);
+            setScreeningResetKey((current) => current + 1);
+          },
+          style: 'destructive',
+          text: moodHistoryContent.clear.confirm,
+        },
+      ],
+    );
+  };
+
+  if (!isOnboardingLoaded) {
+    return null;
+  }
+
+  if (!onboardingProfile) {
+    return (
+      <OnboardingScreen
+        onComplete={(nextProfile) => {
+          completeOnboarding(nextProfile).catch(() => undefined);
+        }}
+        onSkip={() => {
+          skipOnboarding().catch(() => undefined);
+        }}
+      />
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.topRule} />
       <View style={styles.sideRule} />
       <View style={styles.accentBlock} />
+
+      {isProfileOpen && (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Đóng tài khoản"
+          onPress={() => setIsProfileOpen(false)}
+          style={styles.profileBackdrop}
+        />
+      )}
 
       <View style={styles.headerRow}>
         <Pressable
@@ -103,6 +172,17 @@ export function HomeScreen() {
           <View style={styles.profileMenuDivider} />
           <Pressable
             accessibilityRole="button"
+            onPress={confirmClearHistory}
+            style={({ pressed }) => [
+              styles.profileMenuAction,
+              pressed && styles.profileMenuActionPressed,
+            ]}
+          >
+            <Text style={styles.profileMenuActionText}>Xoá toàn bộ lịch sử</Text>
+            <Text style={styles.profileMenuActionArrow}>×</Text>
+          </Pressable>
+          <Pressable
+            accessibilityRole="button"
             onPress={closeProfileAndSignOut}
             style={({ pressed }) => [
               styles.profileMenuAction,
@@ -120,10 +200,24 @@ export function HomeScreen() {
         showsVerticalScrollIndicator={false}
       >
         <FadeInDownView style={styles.panelWrap}>
-          <ScreeningScreen onComplete={setScores} />
+          <ScreeningScreen key={screeningResetKey} onComplete={handleScreeningComplete} />
         </FadeInDownView>
+        <CrisisSafetyBanner isVisible={scores?.isCrisis === true} />
+        {entries.length >= 1 && (
+          <View style={styles.insightWrap}>
+            <InsightCard
+              entries={entries}
+              onViewMore={() => setIsHistorySheetOpen(true)}
+            />
+          </View>
+        )}
       </ScrollView>
-      {scores ? <AIChatFab scores={scores} /> : null}
+      <HistorySheet
+        entries={entries}
+        isOpen={isHistorySheetOpen}
+        onClose={() => setIsHistorySheetOpen(false)}
+      />
+      {scores ? <AIChatFab onboardingProfile={onboardingProfile} scores={scores} /> : null}
     </SafeAreaView>
   );
 }
@@ -239,6 +333,12 @@ const styles = StyleSheet.create({
     transform: [{ translateX: 1 }, { translateY: 1 }],
     shadowOffset: { height: 2, width: 2 },
   },
+  insightWrap: {
+    alignSelf: 'center',
+    maxWidth: 560,
+    paddingTop: spacing.md,
+    width: '100%',
+  },
   profileMenu: {
     backgroundColor: colors.surface,
     borderColor: colors.borderStrong,
@@ -257,6 +357,14 @@ const styles = StyleSheet.create({
     shadowOpacity: 1,
     shadowRadius: 0,
     elevation: 5,
+  },
+  profileBackdrop: {
+    bottom: 0,
+    left: 0,
+    position: 'absolute',
+    right: 0,
+    top: 0,
+    zIndex: 3,
   },
   profileMenuAction: {
     alignItems: 'center',

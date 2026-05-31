@@ -2,8 +2,10 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Animated,
   DeviceEventEmitter,
+  Dimensions,
   Easing,
   KeyboardAvoidingView,
+  PanResponder,
   Platform,
   Pressable,
   ScrollView,
@@ -19,8 +21,15 @@ import type { ScoreResult } from '../hooks/use_scoring';
 import { AIChatMessage, requestAIChat } from '../services/ai_chat';
 import { getSupabaseClient } from '../services/supabase';
 import { colors, spacing } from '../styles/theme';
+import type { OnboardingProfile } from '../types/onboarding';
 
 const minimumAssistantDelayMs = 2000;
+const fabSize = 56; // when open
+const fabClosedWidth = 56; // when closed (perfect minimalist circle!)
+const fabHeight = 56;
+const fabEdgeInset = 4; // Snap with a premium 4px padding from borders!
+const panelEdgeInset = 10; // Floating margin for chat box from screen borders
+const fabVerticalInset = 16;
 
 type AIChatConversation = {
   createdAt: number;
@@ -31,6 +40,7 @@ type AIChatConversation = {
 };
 
 type AIChatFabProps = {
+  onboardingProfile?: OnboardingProfile | null;
   scores?: ScoreResult | null;
 };
 
@@ -51,9 +61,12 @@ type MessageRow = {
   user_id: string;
 };
 
-export function AIChatFab({ scores }: AIChatFabProps) {
+export function AIChatFab({ onboardingProfile, scores }: AIChatFabProps) {
   const { user } = useAuth();
   const fabScale = useRef(new Animated.Value(1)).current;
+  const fabTranslate = useRef(new Animated.ValueXY({ x: 0, y: 0 })).current;
+  const dragStartRef = useRef({ x: 0, y: 0 });
+  const dragMovedRef = useRef(false);
   const panelProgress = useRef(new Animated.Value(0)).current;
   const scrollViewRef = useRef<ScrollView>(null);
   const [draft, setDraft] = useState('');
@@ -61,12 +74,16 @@ export function AIChatFab({ scores }: AIChatFabProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
   const [isSending, setIsSending] = useState(false);
+  const [fabPosition, setFabPosition] = useState(() => getDefaultFabPosition());
   const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
   const [conversations, setConversations] = useState<AIChatConversation[]>([]);
   const activeConversation = conversations.find(
     (conversation) => conversation.id === activeConversationId,
   );
-  const initialMessages = useMemo(() => buildInitialAIChatMessages(scores), [scores]);
+  const initialMessages = useMemo(
+    () => buildInitialAIChatMessages(scores, onboardingProfile),
+    [onboardingProfile, scores],
+  );
   const messages =
     activeConversation && activeConversation.messages.length > 0
       ? activeConversation.messages
@@ -75,6 +92,75 @@ export function AIChatFab({ scores }: AIChatFabProps) {
   const hasSavedConversation = conversations.some((conversation) =>
     conversation.messages.some((message) => message.role === 'user'),
   );
+  const fabPanResponder = useMemo(
+    () =>
+      PanResponder.create({
+        onStartShouldSetPanResponder: () => !isOpen,
+        onMoveShouldSetPanResponder: (_event, gestureState) =>
+          !isOpen && (Math.abs(gestureState.dx) > 4 || Math.abs(gestureState.dy) > 4),
+        onPanResponderGrant: () => {
+          dragMovedRef.current = false;
+          fabTranslate.setOffset({
+            x: fabPosition.x,
+            y: fabPosition.y,
+          });
+          fabTranslate.setValue({ x: 0, y: 0 });
+        },
+        onPanResponderMove: (_event, gestureState) => {
+          dragMovedRef.current = true;
+          const absoluteX = fabPosition.x + gestureState.dx;
+          const absoluteY = fabPosition.y + gestureState.dy;
+
+          const clamped = clampFabPosition({ x: absoluteX, y: absoluteY });
+
+          fabTranslate.setValue({
+            x: clamped.x - fabPosition.x,
+            y: clamped.y - fabPosition.y,
+          });
+        },
+        onPanResponderRelease: (_event, gestureState) => {
+          fabTranslate.flattenOffset();
+
+          const hasMoved = Math.abs(gestureState.dx) > 4 || Math.abs(gestureState.dy) > 4;
+
+          if (!hasMoved) {
+            // It was a tap!
+            setIsOpen((current) => !current);
+            return;
+          }
+
+          // It was a drag!
+          const absoluteX = fabPosition.x + gestureState.dx;
+          const absoluteY = fabPosition.y + gestureState.dy;
+
+          const rawPosition = clampFabPosition({ x: absoluteX, y: absoluteY });
+          const snappedPosition = snapFabPosition(rawPosition);
+
+          Animated.timing(fabTranslate, {
+            toValue: snappedPosition,
+            duration: 320,
+            easing: Easing.out(Easing.cubic),
+            useNativeDriver: true,
+          }).start(() => {
+            setFabPosition(snappedPosition);
+          });
+        },
+        onPanResponderTerminate: () => {
+          fabTranslate.flattenOffset();
+          Animated.timing(fabTranslate, {
+            toValue: fabPosition,
+            duration: 250,
+            easing: Easing.out(Easing.cubic),
+            useNativeDriver: true,
+          }).start();
+        },
+      }),
+    [fabPosition, fabTranslate, isOpen],
+  );
+
+  useEffect(() => {
+    fabTranslate.setValue(fabPosition);
+  }, [fabPosition, fabTranslate]);
 
   useEffect(() => {
     let active = true;
@@ -158,12 +244,12 @@ export function AIChatFab({ scores }: AIChatFabProps) {
 
         return {
           ...conversation,
-          messages: buildInitialAIChatMessages(scores),
+          messages: buildInitialAIChatMessages(scores, onboardingProfile),
           updatedAt: Date.now(),
         };
       }),
     );
-  }, [activeConversationId, scores]);
+  }, [activeConversationId, onboardingProfile, scores]);
 
   const latestUserText = useMemo(
     () => [...messages].reverse().find((message) => message.role === 'user')?.content,
@@ -214,7 +300,7 @@ export function AIChatFab({ scores }: AIChatFabProps) {
       updateConversationMessages(conversationId, persistedUserMessages);
 
       const [response] = await Promise.all([
-        requestAIChat(persistedUserMessages, scores),
+        requestAIChat(persistedUserMessages, scores, onboardingProfile),
         wait(minimumAssistantDelayMs),
       ]);
       const savedAssistantMessage = await insertRemoteMessage({
@@ -327,6 +413,18 @@ export function AIChatFab({ scores }: AIChatFabProps) {
     ],
   };
 
+  const { height, width } = getScreenBounds();
+  const isLeft = fabPosition.x + fabClosedWidth / 2 < width / 2;
+  const isTopHalf = fabPosition.y < height / 2;
+
+  const panelPositionStyle = isTopHalf
+    ? {
+        top: fabPosition.y + fabHeight + 8,
+      }
+    : {
+        bottom: height - fabPosition.y + 8,
+      };
+
   return (
     <View pointerEvents="box-none" style={styles.layer}>
       {isOpen && (
@@ -338,7 +436,20 @@ export function AIChatFab({ scores }: AIChatFabProps) {
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
           pointerEvents="box-none"
-          style={styles.panelWrap}
+          style={[
+            styles.panelWrap,
+            panelPositionStyle,
+            width > 480
+              ? {
+                  left: isLeft ? panelEdgeInset : undefined,
+                  right: !isLeft ? panelEdgeInset : undefined,
+                  width: 360,
+                }
+              : {
+                  left: panelEdgeInset,
+                  right: panelEdgeInset,
+                },
+          ]}
         >
           <Animated.View style={[styles.panel, panelAnimatedStyle]}>
             <View style={styles.panelHeader}>
@@ -536,13 +647,34 @@ export function AIChatFab({ scores }: AIChatFabProps) {
         </KeyboardAvoidingView>
       )}
 
-      <Animated.View style={[styles.fabWrap, { transform: [{ scale: fabScale }] }]}>
+      <Animated.View
+        {...fabPanResponder.panHandlers}
+        style={[
+          styles.fabWrap,
+          {
+            left: 0,
+            top: 0,
+            transform: [
+              { translateX: fabTranslate.x },
+              { translateY: fabTranslate.y },
+              { scale: fabScale },
+            ],
+          },
+        ]}
+      >
         <Pressable
           accessibilityRole="button"
           accessibilityState={{ expanded: isOpen }}
           onPressIn={handleFabPressIn}
           onPressOut={handleFabPressOut}
-          onPress={() => setIsOpen((current) => !current)}
+          onPress={() => {
+            if (dragMovedRef.current) {
+              dragMovedRef.current = false;
+              return;
+            }
+
+            setIsOpen((current) => !current);
+          }}
           style={[styles.fab, isOpen && styles.fabOpen]}
         >
           <View style={[styles.fabIcon, isOpen && styles.fabIconOpen]}>
@@ -560,7 +692,6 @@ export function AIChatFab({ scores }: AIChatFabProps) {
             )}
           </View>
           {!isOpen && hasSavedConversation && <View style={styles.fabBadge} />}
-          {!isOpen && <Text style={styles.fabLabel}>AI</Text>}
         </Pressable>
       </Animated.View>
     </View>
@@ -569,6 +700,44 @@ export function AIChatFab({ scores }: AIChatFabProps) {
 
 function createMessageId(prefix: string) {
   return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+}
+
+function getScreenBounds() {
+  const { height, width } = Dimensions.get('window');
+
+  return {
+    height,
+    width,
+  };
+}
+
+function getDefaultFabPosition() {
+  const { height, width } = getScreenBounds();
+
+  return {
+    x: width - fabClosedWidth - fabEdgeInset,
+    y: height - fabHeight - 24,
+  };
+}
+
+function clampFabPosition(position: { x: number; y: number }) {
+  const { height, width } = getScreenBounds();
+
+  return {
+    x: Math.max(fabEdgeInset, Math.min(position.x, width - fabClosedWidth - fabEdgeInset)),
+    y: Math.max(fabVerticalInset, Math.min(position.y, height - fabHeight - fabVerticalInset)),
+  };
+}
+
+function snapFabPosition(position: { x: number; y: number }) {
+  const { width } = getScreenBounds();
+  const leftX = fabEdgeInset;
+  const rightX = width - fabClosedWidth - fabEdgeInset;
+
+  return clampFabPosition({
+    x: position.x + fabClosedWidth / 2 < width / 2 ? leftX : rightX,
+    y: position.y,
+  });
 }
 
 function createLocalMessage(content: string, role: AIChatMessage['role']): AIChatMessage {
@@ -1000,16 +1169,15 @@ function sortConversations(conversations: AIChatConversation[]) {
     alignItems: 'center',
     backgroundColor: colors.accent,
     borderColor: colors.borderStrong,
-    borderRadius: 24,
+    borderRadius: 28,
     borderWidth: 2,
     flexDirection: 'row',
-    gap: spacing.sm,
     height: 56,
+    width: fabClosedWidth,
     justifyContent: 'center',
-    minWidth: 56,
     overflow: 'visible',
-    paddingLeft: spacing.xs,
-    paddingRight: spacing.md,
+    paddingLeft: 0,
+    paddingRight: 0,
     shadowColor: colors.borderStrong,
     shadowOffset: { height: 2, width: 2 },
     shadowOpacity: 1,
@@ -1112,19 +1280,9 @@ function sortConversations(conversations: AIChatConversation[]) {
     includeFontPadding: false,
     lineHeight: 15,
   },
-  fabLabel: {
-    color: colors.onPrimary,
-    fontSize: 13,
-    fontWeight: '900',
-    letterSpacing: 0.5,
-    lineHeight: 15,
-    paddingRight: 1,
-  },
   fabWrap: {
-    bottom: spacing.xl,
     elevation: 32,
     position: 'absolute',
-    right: spacing.xl,
     zIndex: 32,
   },
   headerActions: {
@@ -1206,7 +1364,8 @@ function sortConversations(conversations: AIChatConversation[]) {
     maxHeight: 560,
     minHeight: 420,
     overflow: 'hidden',
-    padding: spacing.md,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.md,
     shadowColor: colors.borderStrong,
     shadowOffset: { height: 4, width: 4 },
     shadowOpacity: 1,
@@ -1257,11 +1416,8 @@ function sortConversations(conversations: AIChatConversation[]) {
     minWidth: 0,
   },
   panelWrap: {
-    bottom: 92,
     elevation: 31,
-    left: spacing.md,
     position: 'absolute',
-    right: spacing.md,
     zIndex: 31,
   },
   panelCloseGlyph: {

@@ -1,4 +1,6 @@
 import type { ScoreResult } from '../hooks/use_scoring';
+import { describeOnboardingProfile } from '../data/onboarding_content';
+import type { OnboardingProfile } from '../types/onboarding';
 import { getTimeContext, type TimeContext } from '../utils/time_context';
 
 export type GroqChatMessage = {
@@ -86,7 +88,11 @@ export async function requestGroqChatCompletion({
   return content;
 }
 
-export function buildSystemPrompt(scores: ScoreResult, timeCtx: TimeContext): string {
+export function buildSystemPrompt(
+  scores: ScoreResult,
+  timeCtx: TimeContext,
+  onboardingProfile?: OnboardingProfile | null,
+): string {
   const who5Level =
     scores.who5_pct >= 72
       ? 'đang ở trạng thái khá tốt'
@@ -110,6 +116,7 @@ export function buildSystemPrompt(scores: ScoreResult, timeCtx: TimeContext): st
         : scores.gad7 > 9
           ? 'Sự bất an đang rõ hơn - có thể đang vòng quanh suy nghĩ và khó buông.'
           : '';
+  const onboardingContext = describeOnboardingProfile(onboardingProfile);
 
   return `
 Bạn là một người bạn thân thiết, ấm áp, và biết lắng nghe - không phải chuyên gia tâm lý.
@@ -120,7 +127,8 @@ Bạn chỉ làm một việc: ở đây, lắng nghe, và giúp người dùng 
 Wellbeing tổng quát: người dùng ${who5Level}.
 ${dominantSignals}
 ${crossPattern}
-Thời điểm mở app: ${timeCtx.note}
+${onboardingContext}
+Thời điểm mở Solen: ${timeCtx.note}
 ${timeCtx.isOffHours ? 'Đây là giờ bất thường - người dùng có thể đang rất cần được lắng nghe. Hãy chậm lại, không hỏi nhiều.' : ''}
 ------------------------------------------------------
 
@@ -168,10 +176,11 @@ CÁCH PHẢN HỒI:
 export async function sendMessage(
   messages: ConversationMessage[],
   scores: ScoreResult,
+  onboardingProfile?: OnboardingProfile | null,
 ): Promise<string> {
   return requestGroqChatCompletion({
     messages: [
-      { content: buildSystemPrompt(scores, getTimeContext()), role: 'system' },
+      { content: buildSystemPrompt(scores, getTimeContext(), onboardingProfile), role: 'system' },
       ...messages.map(({ content, role }) => ({
         content,
         role,

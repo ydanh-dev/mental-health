@@ -16,19 +16,19 @@ export interface TimeContext {
 
 const timeNotes: Record<TimePeriod, string> = {
   afternoon:
-    'User mở app buổi chiều - có thể đang mệt mỏi tích lũy trong ngày',
+    'User mở Solen buổi chiều - có thể đang mệt mỏi tích lũy trong ngày',
   early_morning:
-    'User mở app sáng sớm - có thể lo lắng trước ngày mới, cần tone bình tĩnh và tiếp thêm sức',
+    'User mở Solen sáng sớm - có thể lo lắng trước ngày mới, cần tone bình tĩnh và tiếp thêm sức',
   evening:
-    'User mở app buổi tối - đang reflect sau một ngày dài, cần không gian để kể',
+    'User mở Solen buổi tối - đang reflect sau một ngày dài, cần không gian để kể',
   late_night:
-    'User mở app lúc đêm khuya - có thể đang mất ngủ hoặc rất bứt rứt, cần tone nhẹ nhàng và không hỏi dồn',
+    'User mở Solen lúc đêm khuya - có thể đang mất ngủ hoặc rất bứt rứt, cần tone nhẹ nhàng và không hỏi dồn',
   midday:
-    'User mở app giữa trưa - có thể kiệt sức hoặc cần lấy lại năng lượng',
+    'User mở Solen giữa trưa - có thể kiệt sức hoặc cần lấy lại năng lượng',
   morning:
-    'User mở app buổi sáng - tỉnh táo, có thể đang xử lý cảm xúc từ hôm qua',
+    'User mở Solen buổi sáng - tỉnh táo, có thể đang xử lý cảm xúc từ hôm qua',
   night:
-    'User mở app đêm muộn - có thể cô đơn hoặc khó buông bỏ suy nghĩ',
+    'User mở Solen đêm muộn - có thể cô đơn hoặc khó buông bỏ suy nghĩ',
 };
 
 export function getTimeContext(): TimeContext {

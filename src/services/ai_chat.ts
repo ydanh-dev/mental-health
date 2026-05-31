@@ -1,4 +1,5 @@
 import type { ScoreResult } from "../hooks/use_scoring";
+import type { OnboardingProfile } from "../types/onboarding";
 import { sendMessage } from "./groq";
 
 export type AIChatMessage = {
@@ -15,6 +16,7 @@ export type AIChatResponse = {
 export async function requestAIChat(
   messages: AIChatMessage[],
   scores?: ScoreResult | null,
+  onboardingProfile?: OnboardingProfile | null,
 ): Promise<AIChatResponse> {
   if (!scores) {
     throw new Error("Bạn cần hoàn thành phần câu hỏi trước khi trò chuyện.");
@@ -26,6 +28,7 @@ export async function requestAIChat(
       role,
     })),
     scores,
+    onboardingProfile,
   );
 
   return {

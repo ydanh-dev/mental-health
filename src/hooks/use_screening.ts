@@ -35,9 +35,13 @@ export function useScreening() {
       .then((value) => {
         if (value) {
           const parsed = JSON.parse(value);
-          if (parsed.completedAt) {
-            parsed.completedAt = new Date(parsed.completedAt);
+
+          if (parsed.completedAt || parsed.currentInstrument === "done") {
+            setState(initialState);
+            AsyncStorage.removeItem(SCREENING_STORAGE_KEY).catch(() => undefined);
+            return;
           }
+
           setState(parsed);
         }
       })
@@ -47,6 +51,14 @@ export function useScreening() {
 
   useEffect(() => {
     if (!isLoaded) return;
+
+    if (state.completedAt || state.currentInstrument === "done") {
+      AsyncStorage.removeItem(SCREENING_STORAGE_KEY).catch(
+        (err) => console.log("Error clearing completed screening state:", err),
+      );
+      return;
+    }
+
     AsyncStorage.setItem(SCREENING_STORAGE_KEY, JSON.stringify(state)).catch(
       (err) => console.log("Error saving screening state:", err),
     );
