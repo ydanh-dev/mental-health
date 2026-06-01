@@ -19,6 +19,7 @@ import {
 import { colors, radius, spacing } from '../styles/theme';
 import type { MoodEntry } from '../types/mood_history';
 import { MoodHeatmap } from './mood_heatmap';
+import { PixelMoodCalendar } from './pixel_mood_calendar';
 import { ProgressDashboard } from './progress_dashboard';
 
 type HistorySheetProps = {
@@ -27,7 +28,7 @@ type HistorySheetProps = {
   onClose: () => void;
 };
 
-type HistoryTab = 'progress' | 'weeks';
+type HistoryTab = 'month' | 'progress' | 'weeks';
 
 function getMoodColorLight(pct: number) {
   if (pct >= 72) return '#EAF2EF';
@@ -50,11 +51,11 @@ export function HistorySheet({ entries, isOpen, onClose }: HistorySheetProps) {
     [visibleWeekCount],
   );
 
-  const slideAnim = useRef(new Animated.Value(activeTab === 'weeks' ? 0 : 1)).current;
+  const slideAnim = useRef(new Animated.Value(getTabIndex(activeTab))).current;
 
   useEffect(() => {
     Animated.spring(slideAnim, {
-      toValue: activeTab === 'weeks' ? 0 : 1,
+      toValue: getTabIndex(activeTab),
       useNativeDriver: false,
       bounciness: 4,
       speed: 12,
@@ -82,8 +83,8 @@ export function HistorySheet({ entries, isOpen, onClose }: HistorySheetProps) {
               styles.slidingIndicator,
               {
                 left: slideAnim.interpolate({
-                  inputRange: [0, 1],
-                  outputRange: ['0.5%', '50.5%'],
+                  inputRange: [0, 1, 2],
+                  outputRange: ['0.5%', '33.8%', '67.1%'],
                 }),
               },
             ]}
@@ -92,6 +93,11 @@ export function HistorySheet({ entries, isOpen, onClose }: HistorySheetProps) {
             isSelected={activeTab === 'weeks'}
             label="Theo tuần"
             onPress={() => setActiveTab('weeks')}
+          />
+          <TabButton
+            isSelected={activeTab === 'month'}
+            label="Tháng"
+            onPress={() => setActiveTab('month')}
           />
           <TabButton
             isSelected={activeTab === 'progress'}
@@ -104,6 +110,12 @@ export function HistorySheet({ entries, isOpen, onClose }: HistorySheetProps) {
           <View style={styles.contentPane}>
             <View style={styles.progressWrap}>
               <ProgressDashboard entries={entries} />
+            </View>
+          </View>
+        ) : activeTab === 'month' ? (
+          <View style={styles.contentPane}>
+            <View style={styles.progressWrap}>
+              <PixelMoodCalendar entries={entries} />
             </View>
           </View>
         ) : (
@@ -154,6 +166,18 @@ export function HistorySheet({ entries, isOpen, onClose }: HistorySheetProps) {
       </View>
     </Modal>
   );
+}
+
+function getTabIndex(tab: HistoryTab) {
+  if (tab === 'weeks') {
+    return 0;
+  }
+
+  if (tab === 'month') {
+    return 1;
+  }
+
+  return 2;
 }
 
 function TabButton({
@@ -278,15 +302,24 @@ function formatShortDate(date: Date) {
 const styles = StyleSheet.create({
   closeButton: {
     alignItems: 'center',
-    height: 40,
+    backgroundColor: colors.surface,
+    borderColor: colors.borderStrong,
+    borderRadius: 18,
+    borderWidth: 1.5,
+    height: 36,
     justifyContent: 'center',
-    width: 40,
+    width: 36,
+    shadowColor: colors.borderStrong,
+    shadowOffset: { width: 2, height: 2 },
+    shadowOpacity: 1,
+    shadowRadius: 0,
+    elevation: 2,
   },
   closeText: {
     color: colors.textPrimary,
-    fontSize: 28,
-    fontWeight: '700',
-    lineHeight: 32,
+    fontSize: 16,
+    fontWeight: '900',
+    lineHeight: 18,
   },
   contentPane: {
     backgroundColor: colors.background,
@@ -385,7 +418,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 3,
     bottom: 3,
-    width: '49%',
+    width: '32.4%',
     backgroundColor: colors.primary,
     borderRadius: 9,
     shadowColor: colors.borderStrong,

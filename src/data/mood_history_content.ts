@@ -20,6 +20,9 @@ export const moodHistoryContent = {
     empty: "Cần thêm vài lần nhìn lại để thấy xu hướng rõ hơn.",
     title: "Xu hướng theo tuần",
   },
+  pixel: {
+    title: "Pixel Mood",
+  },
 } as const;
 
 export function buildMoodInsight(entries: MoodEntry[]) {
@@ -164,12 +167,34 @@ export function getEntriesForWeek(entries: MoodEntry[], weekOffset: number) {
   );
 }
 
+export function getEntriesForMonth(entries: MoodEntry[], monthOffset: number) {
+  const { end, start } = getMonthRange(monthOffset);
+
+  return sortEntries(
+    entries.filter((entry) => {
+      const date = new Date(entry.timestamp);
+
+      return date >= start && date <= end;
+    }),
+  );
+}
+
 export function getWeekRange(weekOffset: number) {
   const today = startOfDay(new Date());
   const monday = addDays(today, -getMondayBasedDayIndex(today));
   const start = addDays(monday, weekOffset * 7);
   const end = new Date(start);
   end.setDate(start.getDate() + 6);
+  end.setHours(23, 59, 59, 999);
+
+  return { end, start };
+}
+
+export function getMonthRange(monthOffset: number) {
+  const today = new Date();
+  const start = new Date(today.getFullYear(), today.getMonth() + monthOffset, 1);
+  start.setHours(0, 0, 0, 0);
+  const end = new Date(start.getFullYear(), start.getMonth() + 1, 0);
   end.setHours(23, 59, 59, 999);
 
   return { end, start };
