@@ -17,13 +17,17 @@ export default function App() {
 function AppContent() {
   const { isLoading, session } = useAuth();
 
-  if (isLoading) {
+  if (isLoading && !session) {
     return null;
+  }
+
+  if (!session) {
+    return <AuthScreen />;
   }
 
   return (
     <LegalConsentGate>
-      {session ? <HomeScreen /> : <AuthScreen />}
+      <HomeScreen />
     </LegalConsentGate>
   );
 }
