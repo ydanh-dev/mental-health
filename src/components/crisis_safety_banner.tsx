@@ -14,25 +14,25 @@ export function CrisisSafetyBanner({ isVisible }: CrisisSafetyBannerProps) {
   return (
     <View style={styles.banner}>
       <View style={styles.copy}>
-        <Text style={styles.title}>Có vẻ lúc này rất nặng.</Text>
+        <Text style={styles.title}>Đừng ở một mình với cảm giác này.</Text>
         <Text style={styles.body}>
-          Nếu bạn có thể gặp nguy hiểm ngay lúc này, hãy gọi 115 hoặc nhờ một người gần bạn ở lại cùng. Nếu bạn đang ở Mỹ, gọi hoặc nhắn 988.
+          Nếu bạn đang nghĩ đến việc kết thúc mọi thứ hoặc khó giữ mình ổn, hãy gọi một nơi có người thật lắng nghe ngay lúc này.
         </Text>
       </View>
       <View style={styles.actions}>
         <Pressable
           accessibilityRole="button"
-          onPress={() => Linking.openURL('tel:115').catch(() => undefined)}
+          onPress={() => Linking.openURL('tel:0963061414').catch(() => undefined)}
           style={({ pressed }) => [styles.primaryAction, pressed && styles.actionPressed]}
         >
-          <Text style={styles.primaryActionText}>Gọi 115</Text>
+          <Text style={styles.primaryActionText}>Gọi Ngày Mai</Text>
         </Pressable>
         <Pressable
           accessibilityRole="button"
-          onPress={() => Linking.openURL('tel:988').catch(() => undefined)}
+          onPress={() => Linking.openURL('tel:111').catch(() => undefined)}
           style={({ pressed }) => [styles.secondaryAction, pressed && styles.actionPressed]}
         >
-          <Text style={styles.secondaryActionText}>988</Text>
+          <Text style={styles.secondaryActionText}>Gọi 111</Text>
         </Pressable>
       </View>
     </View>

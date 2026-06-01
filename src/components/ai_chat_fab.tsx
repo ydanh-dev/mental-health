@@ -18,10 +18,12 @@ import {
 import { aiChatContent, buildInitialAIChatMessages } from '../data/ai_chat_content';
 import { useAuth } from '../hooks/use_auth';
 import type { ScoreResult } from '../hooks/use_scoring';
+import { containsCrisisLanguage } from '../utils/crisis_detection';
 import { AIChatMessage, requestAIChat } from '../services/ai_chat';
 import { getSupabaseClient } from '../services/supabase';
 import { colors, spacing } from '../styles/theme';
 import type { OnboardingProfile } from '../types/onboarding';
+import { CrisisSafetyBanner } from './crisis_safety_banner';
 
 const minimumAssistantDelayMs = 2000;
 const fabSize = 56; // when open
@@ -71,6 +73,7 @@ export function AIChatFab({ onboardingProfile, scores }: AIChatFabProps) {
   const scrollViewRef = useRef<ScrollView>(null);
   const [draft, setDraft] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [hasCrisisSignal, setHasCrisisSignal] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
   const [isSending, setIsSending] = useState(false);
@@ -89,6 +92,8 @@ export function AIChatFab({ onboardingProfile, scores }: AIChatFabProps) {
       ? activeConversation.messages
       : initialMessages;
   const canSend = draft.trim().length > 0 && !isSending;
+  const shouldShowCrisisBanner =
+    hasCrisisSignal || messages.some((message) => containsCrisisLanguage(message.content));
   const hasSavedConversation = conversations.some((conversation) =>
     conversation.messages.some((message) => message.role === 'user'),
   );
@@ -263,6 +268,10 @@ export function AIChatFab({ onboardingProfile, scores }: AIChatFabProps) {
       return;
     }
 
+    if (containsCrisisLanguage(content)) {
+      setHasCrisisSignal(true);
+    }
+
     let conversationId = activeConversationId;
 
     if (!conversationId) {
@@ -303,6 +312,9 @@ export function AIChatFab({ onboardingProfile, scores }: AIChatFabProps) {
         requestAIChat(persistedUserMessages, scores, onboardingProfile),
         wait(minimumAssistantDelayMs),
       ]);
+      if (containsCrisisLanguage(response.message)) {
+        setHasCrisisSignal(true);
+      }
       const savedAssistantMessage = await insertRemoteMessage({
         content: response.message,
         conversationId,
@@ -610,6 +622,12 @@ export function AIChatFab({ onboardingProfile, scores }: AIChatFabProps) {
                     </View>
                   )}
                 </ScrollView>
+
+                {shouldShowCrisisBanner ? (
+                  <View style={styles.crisisBannerWrap}>
+                    <CrisisSafetyBanner isVisible />
+                  </View>
+                ) : null}
 
                 {error && <Text style={styles.errorText}>{error}</Text>}
 
@@ -1002,6 +1020,9 @@ function sortConversations(conversations: AIChatConversation[]) {
     shadowOffset: { height: 2, width: 2 },
     shadowOpacity: 0.06,
     shadowRadius: 0,
+  },
+  crisisBannerWrap: {
+    maxHeight: 190,
   },
   disabledButton: {
     opacity: 0.55,

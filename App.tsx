@@ -1,5 +1,6 @@
 import { StatusBar } from 'expo-status-bar';
 
+import { LegalConsentGate } from './src/components/legal_consent_gate';
 import { AuthProvider, useAuth } from './src/hooks/use_auth';
 import { AuthScreen } from './src/screens/auth_screen';
 import { HomeScreen } from './src/screens/home_screen';
@@ -20,5 +21,9 @@ function AppContent() {
     return null;
   }
 
-  return session ? <HomeScreen /> : <AuthScreen />;
+  return (
+    <LegalConsentGate>
+      {session ? <HomeScreen /> : <AuthScreen />}
+    </LegalConsentGate>
+  );
 }
