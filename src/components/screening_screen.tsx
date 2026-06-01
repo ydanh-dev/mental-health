@@ -4,6 +4,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { screeningContent } from '../data/screening_content';
 import { calculateScores, type ScoreResult } from '../hooks/use_scoring';
 import { useScreening } from '../hooks/use_screening';
+import { requestScreeningReflection } from '../services/screening_reflection';
 import { colors, radius, spacing } from '../styles/theme';
 import { FadeInDownView } from './fade_in_down_view';
 import { OptionPicker } from './option_picker';
@@ -25,6 +26,8 @@ export function ScreeningScreen({ onComplete }: ScreeningScreenProps) {
     totalCount,
   } = useScreening();
   const [pendingQuestionId, setPendingQuestionId] = useState<string | null>(null);
+  const [reflectionText, setReflectionText] = useState('');
+  const [reflectionRequestedAt, setReflectionRequestedAt] = useState<Date | undefined>();
   const [selectedAnswer, setSelectedAnswer] = useState<string | undefined>();
   const [completedNotifiedAt, setCompletedNotifiedAt] = useState<Date | undefined>();
   const currentScale = currentItem ? data.scales[currentItem.question.scale] : undefined;
@@ -34,9 +37,21 @@ export function ScreeningScreen({ onComplete }: ScreeningScreenProps) {
       return;
     }
 
+    const nextScores = calculateScores(state.answers);
+
     setCompletedNotifiedAt(state.completedAt);
-    onComplete(calculateScores(state.answers));
-  }, [completedNotifiedAt, onComplete, state]);
+    onComplete(nextScores);
+
+    if (reflectionRequestedAt !== state.completedAt) {
+      setReflectionRequestedAt(state.completedAt);
+      setReflectionText('');
+      requestScreeningReflection(state.answers, nextScores)
+        .then(setReflectionText)
+        .catch(() => {
+          setReflectionText('Mình đã ghi lại phần bạn vừa chọn. Nếu muốn, bạn có thể kể tiếp từ cảm giác đang rõ nhất lúc này.');
+        });
+    }
+  }, [completedNotifiedAt, onComplete, reflectionRequestedAt, state]);
 
   useEffect(() => {
     setSelectedAnswer(undefined);
@@ -61,6 +76,8 @@ export function ScreeningScreen({ onComplete }: ScreeningScreenProps) {
   const restart = () => {
     reset();
     setPendingQuestionId(null);
+    setReflectionRequestedAt(undefined);
+    setReflectionText('');
     setSelectedAnswer(undefined);
     setCompletedNotifiedAt(undefined);
     onComplete(null);
@@ -106,7 +123,7 @@ export function ScreeningScreen({ onComplete }: ScreeningScreenProps) {
         )}
 
         {currentItem && !pendingQuestionId && state.currentInstrument !== 'done' && (
-          <FadeInDownView distance={10} duration={360} key={currentItem.question.id}>
+          <FadeInDownView distance={10} duration={360} key={currentItem.question.id} style={styles.questionStep}>
             <QuestionBubble
               text={currentItem.question.text}
             />
@@ -122,8 +139,8 @@ export function ScreeningScreen({ onComplete }: ScreeningScreenProps) {
           </FadeInDownView>
         )}
 
-        {pendingQuestionId && (
-          <FadeInDownView distance={8} duration={220}>
+        {pendingQuestionId && state.currentInstrument !== 'done' && (
+          <FadeInDownView distance={8} duration={220} style={styles.questionStep}>
             <View style={styles.loadingBubble}>
               <TypingIndicator />
             </View>
@@ -131,14 +148,16 @@ export function ScreeningScreen({ onComplete }: ScreeningScreenProps) {
         )}
 
         {state.currentInstrument === 'done' && (
-          <FadeInDownView distance={10} duration={360}>
-            <View style={styles.doneCard}>
-              <Text style={styles.doneTitle}>{screeningContent.completion.title}</Text>
-
-              <Text style={styles.doneBody}>
-                Mở chat ở góc dưới để kể tiếp nhé. Mình đã hiểu ngữ cảnh - không cần giải thích lại từ đầu.
-              </Text>
-
+          <FadeInDownView distance={10} duration={360} style={styles.questionStep}>
+            <View style={styles.reflectionCard}>
+              {reflectionText ? (
+                <Text style={styles.reflectionText}>{reflectionText}</Text>
+              ) : (
+                <View style={styles.reflectionLoading}>
+                  <TypingIndicator />
+                  <Text style={styles.reflectionLoadingText}>Đang nhìn lại phần bạn vừa chọn...</Text>
+                </View>
+              )}
               <Pressable
                 accessibilityRole="button"
                 onPress={restart}
@@ -220,12 +239,7 @@ const styles = StyleSheet.create({
     fontSize: 15,
     lineHeight: 22,
   },
-  doneBody: {
-    color: colors.textSecondary,
-    fontSize: 14,
-    lineHeight: 20,
-  },
-  doneCard: {
+  reflectionCard: {
     backgroundColor: colors.surface,
     borderColor: colors.borderStrong,
     borderRadius: radius.md,
@@ -238,12 +252,7 @@ const styles = StyleSheet.create({
     shadowRadius: 0,
     elevation: 3,
     marginBottom: spacing.xs,
-  },
-  doneTitle: {
-    color: colors.textPrimary,
-    fontSize: 18,
-    fontWeight: '900',
-    lineHeight: 23,
+    minHeight: 184,
   },
   loadingBubble: {
     alignSelf: 'flex-start',
@@ -253,6 +262,22 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.md,
+  },
+  reflectionLoading: {
+    alignItems: 'flex-start',
+    gap: spacing.sm,
+  },
+  reflectionLoadingText: {
+    color: colors.textMuted,
+    fontSize: 13,
+    fontWeight: '800',
+    lineHeight: 18,
+  },
+  reflectionText: {
+    color: colors.textPrimary,
+    fontSize: 15,
+    fontWeight: '700',
+    lineHeight: 22,
   },
   questionText: {
     color: colors.textPrimary,
@@ -264,6 +289,9 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
     flexDirection: 'row',
     gap: spacing.sm,
+  },
+  questionStep: {
+    minHeight: 390,
   },
   stepContent: {
     gap: spacing.lg,

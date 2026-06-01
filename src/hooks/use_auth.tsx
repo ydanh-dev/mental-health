@@ -18,6 +18,16 @@ WebBrowser.maybeCompleteAuthSession();
 
 const GOOGLE_AUTH_REDIRECT_URL = 'mentalhealth://auth/callback';
 
+function isInvalidRefreshTokenError(error: unknown) {
+  if (!error || typeof error !== 'object') {
+    return false;
+  }
+
+  const message = 'message' in error ? String(error.message).toLowerCase() : '';
+
+  return message.includes('invalid refresh token') || message.includes('refresh token not found');
+}
+
 function parseAuthParams(url: string) {
   const params: Record<string, string> = {};
   
@@ -82,8 +92,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
     }
 
     let active = true;
+    const client = supabase;
 
-    supabase.auth
+    client.auth
       .getSession()
       .then(({ data, error: sessionError }) => {
         if (!active) {
@@ -91,13 +102,27 @@ export function AuthProvider({ children }: AuthProviderProps) {
         }
 
         if (sessionError) {
-          setError(sessionError.message);
+          if (isInvalidRefreshTokenError(sessionError)) {
+            client.auth.signOut({ scope: 'local' }).catch(() => undefined);
+            setSession(null);
+            setError(null);
+            return;
+          }
+
+          setError('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.');
           return;
         }
 
         setSession(data.session);
       })
-      .catch(() => {
+      .catch((sessionError) => {
+        if (isInvalidRefreshTokenError(sessionError)) {
+          client.auth.signOut({ scope: 'local' }).catch(() => undefined);
+          setSession(null);
+          setError(null);
+          return;
+        }
+
         setError('Không đọc được phiên đăng nhập.');
       })
       .finally(() => {
@@ -108,7 +133,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+    } = client.auth.onAuthStateChange((_event, nextSession) => {
       setSession(nextSession);
     });
 

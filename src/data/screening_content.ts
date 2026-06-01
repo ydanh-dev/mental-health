@@ -10,8 +10,8 @@ export const screeningContent = {
     stableWellbeing: 'Có vẻ bạn vẫn còn điểm tựa. Mình sẽ lắng nghe thêm.',
   },
   completion: {
-    title: 'Mình đã hiểu hơn một chút rồi.',
-    body: 'Mở chat ở góc dưới để kể tiếp nhé. Mình sẽ dùng phần vừa rồi làm ngữ cảnh - không đọc con số ra thành nhãn.',
+    title: 'Nhìn lại nhanh',
+    body: 'Phần vừa rồi sẽ được viết lại thành một đoạn ngắn, không đọc con số ra thành nhãn.',
     action: 'Bắt đầu lại',
   },
   typingLabel: 'AI đang gõ',
